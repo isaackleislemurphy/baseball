@@ -23,7 +23,8 @@ def retrieve_statcast_pitch_data(
             The end date (latest date) for the Statcast data retrieval.
 
     date_min : Optional[str]
-            The start date (earliest date) for the Statcast data retrieval. Defaults to DATA_CONSTANTS.MIN_STATCAST_DATE.
+            The start date (earliest date) for the Statcast data retrieval. Defaults to
+            `DATA_CONSTANTS.MIN_STATCAST_DATE.`
 
     Returns:
     --------
@@ -34,7 +35,8 @@ def retrieve_statcast_pitch_data(
     ------
     This function is a wrapper around `pybaseball`'s `statcast()` function and performs two main tasks:
     1. Retrieves Statcast pitch data for the specified date range.
-    2. Renames the columns of the retrieved data based on predefined column renamings in DATA_CONSTANTS.STATCAST_RENAMINGS.
+    2. Renames the columns of the retrieved data based on predefined column renamings in
+        `DATA_CONSTANTS.STATCAST_RENAMINGS`.
 
     The renamed columns help make the data more user-friendly and aligned with your preferences.
 
@@ -74,7 +76,8 @@ def test_data_integrity(data_df: pd.DataFrame) -> None:
     4. Validates that the 'pitch_type' column contains only valid pitch types defined in DATA_CONSTANTS.PITCH_TYPES.
     5. Validates that the 'throws' column contains only 'L' (Left) or 'R' (Right) values.
     6. Checks that there are no bunt attempts in the dataset (requires 'is_bunt_attempt' column).
-    7. Validates that the 'description' column contains only valid categorical response values defined in DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.
+    7. Validates that the 'description' column contains only valid categorical response values defined in
+        `DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS`.
 
     Notes:
     ------
@@ -100,10 +103,9 @@ def test_data_integrity(data_df: pd.DataFrame) -> None:
         set(data_df.throws.unique()).difference(["L", "R"]) == set()
     ), "'throws' column has values besides 'L' and 'R'"
     assert data_df.is_bunt_attempt.sum() == 0, f"You have {data_df.is_bunt_attempt.sum()} bunt attempts in your dataset"
-    assert (
-        set(data_df.description.tolist()).difference(DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.keys()) == set(),
-        f"'description' column has invalid values: {set(data_df.description).difference(DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.keys())}",
-    )
+
+    desc_check = set(data_df.description.tolist()).difference(DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.keys())
+    assert (desc_check == set(), f"'description' column has invalid values: {desc_check}")
 
 
 def filter_data(data_df: pd.DataFrame) -> pd.DataFrame:
