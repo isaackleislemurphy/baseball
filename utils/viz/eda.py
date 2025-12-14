@@ -1,4 +1,4 @@
-""" """
+"""EDA visuals"""
 
 from typing import Optional
 import matplotlib.pyplot as plt
@@ -7,7 +7,13 @@ import pandas as pd
 import seaborn as sns
 
 
-def plot_pairwise_relationships(df, hue=None, kind_lower="scatter", corner=True, title=None):
+def plot_pairwise_relationships(
+    df: pd.DataFrame,
+    hue: Optional[str] = None,
+    kind_lower: str = "scatter",
+    corner: bool = True,
+    title: Optional[str] = None,
+):
     """
     Generates a mixed-type PairGrid: KDEs on the upper triangle, scatter/reg plots
     on the lower triangle, and histograms on the diagonal.

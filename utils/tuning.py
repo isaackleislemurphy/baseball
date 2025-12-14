@@ -10,7 +10,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 from sklearn.metrics import make_scorer, mean_absolute_error
-from sklearn.model_selection import cross_val_score, KFold
+from sklearn.model_selection import cross_val_score, BaseCrossValidator, KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RationalQuadratic
 from sklearn.gaussian_process.kernels import WhiteKernel
@@ -65,7 +65,7 @@ class GPHPTuner:
         The number of discrete hyperparameters.
     estimator : Any
         The **uninstantiated** sklearn-compatible estimator provided during initialization.
-    kfold : sklearn.model_selection.KFold
+    kfold : sklearn.model_selection.BaseCrossValidator
         The cross-validation splitting strategy initialized with the specified `cv` count.
     loss_fn : Callable
         The scoring function (wrapped via `sklearn.metrics.make_scorer`) used to evaluate
@@ -105,6 +105,7 @@ class GPHPTuner:
         kernel: Kernel = RationalQuadratic() + WhiteKernel(noise_level=1e-4),
         cv: int = 20,
         loss_fn: Callable = mean_absolute_error,
+        kfold: BaseCrossValidator = KFold,
     ) -> None:
         """
         Parameters
@@ -126,10 +127,12 @@ class GPHPTuner:
             The number of splits for Cross-Validation.
         loss_fn : Callable, default=sklearn.metrics.mean_absolute_error
             The loss function to minimize. Must be compatible with sklearn's `make_scorer`.
+        kfold : BaseCrossValidator, default=KFold
+            An sklearn cross validator, to manage splitting.
         """
 
         self.estimator = estimator
-        self.kfold = KFold(n_splits=cv, shuffle=True, random_state=None)
+        self.kfold = kfold(n_splits=cv, shuffle=True, random_state=None)
         self.loss_fn = make_scorer(loss_fn)
 
         # everything related to discrete params goes in here
