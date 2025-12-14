@@ -1,1 +1,1 @@
-# baseball
+Baseball-related odds and ends. 
