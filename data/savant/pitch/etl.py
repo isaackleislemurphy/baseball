@@ -1,5 +1,6 @@
-"""Extract fns to pull tracking data"""
+"""Extract fns to pull pitch tracking data from Savant"""
 
+import itertools
 from datetime import datetime
 from typing import Optional
 
@@ -53,7 +54,7 @@ def retrieve_statcast_pitch_data(
 
 def test_data_integrity(data_df: pd.DataFrame) -> None:
     """
-    Perform data integrity checks on a Statcast pitch data DataFrame.
+    Perform data integrity checks on a FULLY PROCESSED Statcast pitch data DataFrame.
 
     Parameters:
     -----------
@@ -72,21 +73,21 @@ def test_data_integrity(data_df: pd.DataFrame) -> None:
     3. Ensures there are no missing values in the 'pitch_group' column.
     4. Validates that the 'pitch_type' column contains only valid pitch types defined in DATA_CONSTANTS.PITCH_TYPES.
     5. Validates that the 'throws' column contains only 'L' (Left) or 'R' (Right) values.
-    6. Checks that there are no bunt attempts in the dataset.
+    6. Checks that there are no bunt attempts in the dataset (requires 'is_bunt_attempt' column).
     7. Validates that the 'description' column contains only valid categorical response values defined in DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.
 
     Notes:
     ------
-    This function is used to perform data quality checks on a Statcast pitch data DataFrame to ensure its integrity and adherence to expected standards.
+    This function should be run at the END of the processing pipeline (e.g., inside `load_pitch_data`),
+    as it checks for features like `is_bunt_attempt` and `pitch_group` that are created during feature engineering.
+    Do not run this immediately after `retrieve_statcast_pitch_data`.
 
     Examples:
     ---------
-    To test the integrity of a Statcast pitch data DataFrame:
+    To test the integrity of a fully processed DataFrame:
 
-    >>> statcast_data = retrieve_statcast_pitch_data(date_max="2023-01-31")
-    >>> test_data_integrity(statcast_data)
-
-    If any of the integrity checks fail, an AssertionError will be raised with a corresponding error message.
+    >>> loaded_data = load_pitch_data()
+    >>> test_data_integrity(loaded_data)
     """
     assert data_df.bats.isna().sum() == 0, "Missing values for 'bats' column"
     assert data_df.throws.isna().sum() == 0, "Missing values for 'throws' column"
@@ -251,9 +252,27 @@ def engineer_x_neutral_features(data_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def parse_missingness(data_df: pd.DataFrame) -> pd.DataFrame:
-    """"""
-    data_df = data_df.copy()
-    shape_in = data_df.shape[0]
+    """
+    Handle missing values in the Statcast DataFrame, particularly for Expected Weighted On-Base Average (xWOBA).
+
+    Parameters:
+    -----------
+    data_df : pd.DataFrame
+            A Pandas DataFrame containing Statcast pitch data.
+
+    Returns:
+    --------
+    pd.DataFrame
+            A new Pandas DataFrame with missing values handled.
+
+    Operations:
+    -----------
+    1. Drops rows where any features defined in `DATA_CONSTANTS.INPUT_VARS` are missing.
+    2. Prints summary statistics about the rows dropped and xWOBA missingness.
+    3. Imputes missing `xwoba` values with 0.0 (typically implying a non-contact or irrelevant outcome for xWOBA calculation).
+    """
+
+    data_df, shape_in = data_df.copy(), data_df.shape[0]
     data_df.dropna(subset=DATA_CONSTANTS.INPUT_VARS, inplace=True)
     print("- # Rows dropped due to missing features:", shape_in - data_df.shape[0])
     ### fill xwoba with 0
@@ -324,14 +343,35 @@ def engineer_bunt_indicator(data_df: pd.DataFrame, remove_bunts: Optional[bool] 
 
 
 def engineer_count_indicators(data_df: pd.DataFrame) -> pd.DataFrame:
-    """ """
+    """
+    One-hot encode ball-strike counts and engineer count-based state flags.
+
+    Parameters:
+    -----------
+    data_df : pd.DataFrame
+            A Pandas DataFrame containing Statcast pitch data with 'balls' and 'strikes' columns.
+
+    Returns:
+    --------
+    pd.DataFrame
+            A new Pandas DataFrame with boolean/binary columns for specific counts and count states.
+
+    Features Engineered:
+    --------------------
+    1. Specific count columns (e.g., '0_0', '3_2') via one-hot encoding.
+    2. 'even_count': 1 if remaining balls equal remaining strikes, else 0.
+    3. 'pitcher_ahead': 1 if the pitcher has fewer pitches remaining to a strikeout than the batter has to a walk.
+    4. 'batter_ahead': 1 if the batter has fewer pitches remaining to a walk than the pitcher has to a strikeout.
+    5. '2K': 1 if there are 2 strikes on the batter.
+    """
 
     data_df = data_df.copy()
-    for balls, strikes in zip(range(4), range(3)):
+    # iterate through counts and encode
+    for balls, strikes in itertools.product(range(4), range(3)):
         data_df[f"{balls}_{strikes}"] = (
             (data_df["balls"].values == balls) * (data_df["strikes"].values == strikes)
         ).astype(int)
-
+    # also flag coarser count states
     data_df["even_count"] = ((4 - data_df["balls"]) == (3 - data_df["strikes"])).astype(int)
     data_df["pitcher_ahead"] = ((4 - data_df["balls"]) > (3 - data_df["strikes"])).astype(int)
     data_df["batter_ahead"] = ((4 - data_df["balls"]) < (3 - data_df["strikes"])).astype(int)
@@ -343,6 +383,13 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.t
     """
     Load, preprocess, and engineer features for a Statcast pitch data DataFrame.
 
+    Parameters:
+    -----------
+    date_min : str, default="2020-01-01"
+            The earliest date to include in the dataset.
+    date_max : str, default=today
+            The latest date to include in the dataset.
+
     Returns:
     --------
     pd.DataFrame
@@ -350,32 +397,28 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.t
 
     Data Loading and Preprocessing:
     ------------------------------
-    1. Loads Statcast pitch data within the date range '2021-10-31' to '2023-01-01' using 'retrieve_statcast_pitch_data'.
-    2. Applies a data cleaning pipeline using 'filter_data', 'engineer_strike_zone_features', 'engineer_x_neutral_features', and 'engineer_bunt_indicator' to filter, engineer, and clean the data.
-    3. Parses missingness in the data using 'parse_missingness' (not provided in this code snippet).
+    1. Loads Statcast pitch data within the specified date range using 'retrieve_statcast_pitch_data'.
+    2. Applies a data cleaning pipeline using 'filter_data', 'engineer_strike_zone_features', 'engineer_x_neutral_features', and 'engineer_bunt_indicator'.
+    3. Parses missingness in the data using 'parse_missingness', dropping inputs with missing features.
 
     Feature Engineering:
     --------------------
-    4. Assigns 'pitch_group' based on 'pitch_type' using predefined mappings in DATA_CONSTANTS.PITCH_GROUP_MAPPINGS.
-    5. Assigns 'pitch_group_idx' based on 'pitch_group' using predefined indices in DATA_CONSTANTS.PITCH_GROUP_INDICES.
+    4. Assigns 'pitch_group' based on 'pitch_type' using predefined mappings.
+    5. Assigns 'pitch_group_idx' based on 'pitch_group' using predefined indices.
     6. Creates an 'is_oppo_hand' indicator for opposite-hand platoon configurations.
-    7. Calculates the 'residual_speed' as the difference between 'effective_speed' and 'release_speed'.
-    8. Maps 'description' to 'pitch_outcome_category' using predefined mappings in DATA_CONSTANTS.PITCH_OUTCOME_CATEGORY_MAPPINGS.
-    9. Creates an 'xwoba_mask' indicating 'bip' (balls in play) in the categorical response.
+    7. Calculates 'residual_speed' (effective_speed - release_speed).
+    8. Maps 'description' to 'pitch_outcome_category'.
+    9. Creates a 'tracking_mask' indicating 'bip' (balls in play) in the categorical response.
 
     Data Integrity Check:
     ---------------------
-    10. Calls 'test_data_integrity' to ensure data integrity and quality.
-
-    Notes:
-    ------
-    This function loads and preprocesses Statcast pitch data, applies a data cleaning pipeline, and engineers various features for subsequent analysis and modeling.
+    10. Calls 'test_data_integrity' to ensure data integrity and quality at the end of the pipeline.
 
     Examples:
     ---------
     To load and preprocess Statcast pitch data:
 
-    >>> loaded_data = load_data()
+    >>> loaded_data = load_pitch_data()
 
     The 'loaded_data' DataFrame will contain the cleaned, enriched, and engineered pitch data ready for analysis.
     """
