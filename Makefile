@@ -1,7 +1,7 @@
 # Default to current directory if DIR is not provided
 DIR ?= .
 
-.PHONY: black
+.PHONY: black lint
 
 black:
 	black $(DIR)
@@ -21,4 +21,5 @@ check: ## Check formatting without modifying files (useful for CI)
 	black --check $(SRC)
 
 lint: ## Run flake8 (or other linters)
-	flake8 $(SRC)
+	# flake8 $(SRC)
+	flake8 --max-line-length=120 $(DIR)

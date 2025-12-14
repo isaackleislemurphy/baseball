@@ -2,6 +2,7 @@
 line-length = 120
 target-version = ['py311']
 include = '\.pyi?$'
+# Exclude standard build/env directories to speed up formatting
 exclude = '''
 /(
     \.git
@@ -18,9 +19,9 @@ exclude = '''
 '''
 
 [tool.isort]
-# Crucial: This setting ensures isort doesn't conflict with Black's formatting
+# "profile = black" is necessary to stop isort from fighting with Black
 profile = "black"
-line_length = 88
+line_length = 120
 multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0

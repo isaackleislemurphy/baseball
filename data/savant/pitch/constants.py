@@ -24,10 +24,10 @@ Statcast-defined pitch mappings
         }
 """
 
-### O.D. 2016: https://en.wikipedia.org/wiki/2016_Major_League_Baseball_season
+# O.D. 2016: https://en.wikipedia.org/wiki/2016_Major_League_Baseball_season
 MIN_STATCAST_DATE = "2016-04-03"
 
-### Game types to include
+# Game types to include
 GAME_TYPES = "W", "L", "D", "F", "R"
 
 STATCAST_RENAMINGS = {
