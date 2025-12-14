@@ -1,0 +1,10 @@
+[flake8]
+# 120 to match your pyproject.toml setting
+max-line-length = 120
+
+# E203: Fixes the "whitespace before ':'" error caused by Black
+# W503: Allows line breaks before binary operators (modern standard)
+extend-ignore = E203, W503
+
+# Exclude standard junk directories
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,.venv
