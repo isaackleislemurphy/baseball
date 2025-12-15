@@ -16,6 +16,10 @@ from sklearn.gaussian_process.kernels import RationalQuadratic
 from sklearn.gaussian_process.kernels import WhiteKernel
 from sklearn.gaussian_process.kernels import Kernel
 
+# keys for the `random_state` attribute in `GPHPTuner`. Setting up like this
+# in case I add more bells/whistles that require stochasticity
+_RANDOM_STATES_KEYS = ("kfold", "random_search")
+
 
 def _support(x: float, p_xh: Any) -> float:
     """
@@ -64,7 +68,7 @@ class GPHPTuner:
     dim_discrete : int
         The number of discrete hyperparameters.
     estimator : Any
-        The **uninstantiated** sklearn-compatible estimator provided during initialization.
+        The **instantiated** sklearn-compatible estimator provided during initialization.
     kfold : sklearn.model_selection.BaseCrossValidator
         The cross-validation splitting strategy initialized with the specified `cv` count.
     loss_fn : Callable
@@ -106,12 +110,19 @@ class GPHPTuner:
         cv: int = 20,
         loss_fn: Callable = mean_absolute_error,
         kfold: BaseCrossValidator = KFold,
+        random_states: Dict = {item: None for item in _RANDOM_STATES_KEYS},
     ) -> None:
         """
         Parameters
         ----------
+        random_states : Dict
+            A dictionary of random states, for reproducibility. Note that:
+                - "kfold" corresponds to the random state for the k-fold object used to partition folds.
+                - "random_state" corresponds to the random state for the initial random search; see
+                    `_propose_random_param_config()`
         estimator : Any
-            An unfitted sklearn-compatible estimator that implements `fit` and `predict`.
+            An unfitted, albeit instantiated sklearn-compatible estimator that implements `fit` and `predict`.
+            Could pass, for example, `XGBRegressor()` or `LogisticRegression()`.
         params_continuous : Dict[str, Any]
             A dictionary mapping continuous hyperparameter names to scipy.stats distribution objects.
             The distributions get used to make the draws for the random search; good chance these are
@@ -130,9 +141,13 @@ class GPHPTuner:
         kfold : BaseCrossValidator, default=KFold
             An sklearn cross validator, to manage splitting.
         """
-
+        # make sure random states key dict is completely full
+        self.random_states = {
+            key: None if key not in random_states.keys() else random_states[key] for key in _RANDOM_STATES_KEYS
+        }
+        # stash estimator, kfold, and loss function
         self.estimator = estimator
-        self.kfold = kfold(n_splits=cv, shuffle=True, random_state=None)
+        self.kfold = kfold(n_splits=cv, shuffle=True, random_state=self.random_states["kfold"])
         self.loss_fn = make_scorer(loss_fn)
 
         # everything related to discrete params goes in here
@@ -282,7 +297,9 @@ class GPHPTuner:
         np.ndarray
             Array of scores from cross-validation.
         """
-        return cross_val_score(self.estimator(**params), x, y, cv=self.kfold, scoring=self.loss_fn, n_jobs=-1)
+        return cross_val_score(
+            self.estimator.set_params(**params), x, y, cv=self.kfold, scoring=self.loss_fn, n_jobs=-1
+        )
 
     def _scale_xh(self, h: np.ndarray) -> np.ndarray:
         """
@@ -384,9 +401,14 @@ class GPHPTuner:
             Number of random configurations to evaluate.
         """
         # do a random search of `n_iter` points
-        for _ in trange(n_iter):
-            # randomly propose some parameters
-            params_iter = self._propose_random_param_config()
+        for i in trange(n_iter):
+            # randomly propose some parameters. Increment the random state off of `self.random_states["random_search"]`
+            random_state = (
+                self.random_states["random_search"] + i
+                if isinstance(self.random_states["random_search"], int)
+                else None
+            )
+            params_iter = self._propose_random_param_config(random_state=random_state)
             # CV-scoring under those parameters
             yl_iter = self._cv_score(x, y, params_iter)
             # update the inputs, for eventual use in the GP
