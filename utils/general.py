@@ -1,5 +1,7 @@
-""" """
+"""Generic, codebase-wide utils"""
 
+import pickle
+from pathlib import Path
 from typing import Any
 import pandas as pd
 
@@ -33,3 +35,27 @@ def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0
     dates["n_obs"] = dates["n_obs"].cumsum() / dates["n_obs"].sum()
     # find a cut date such that `pct_test` of the data can be withheld OOS
     return dates.query(f"n_obs <= {1 - pct_test}")[date_col].iloc[-1]
+
+
+def write_pickled_object(obj: Any, path: str | Path) -> None:
+    """
+    Serialize an object to disk using pickle.
+
+    - Creates parent directories if needed
+    - Uses highest protocol for speed/size
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("wb") as f:
+        pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def load_pickled_object(path: str | Path) -> Any:
+    """
+    Load a pickled object from disk.
+    """
+    path = Path(path)
+
+    with path.open("rb") as f:
+        return pickle.load(f)
