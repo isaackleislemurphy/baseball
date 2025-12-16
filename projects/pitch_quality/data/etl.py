@@ -76,7 +76,7 @@ def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
     return playing_totals
 
 
-def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = "2025-12-01") -> pd.DataFrame:
+def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = "2025-12-01") -> pd.DataFrame:
     """
     Load pitch data and filter for valid pitcher-vs-batter matchups.
 
@@ -100,10 +100,12 @@ def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = 
         batter are deemed "likely" occupants of their respective roles.
     """
     # load the pitch-level data
-    pitch_data_df = load_pitch_data(date_min="2023-01-01", date_max="2023-08-01")
+    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max)
 
     # make the categorical response index
-    pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(CATEGORICAL_RESPONSE_INDICES)
+    pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(
+        CATEGORICAL_RESPONSE_INDICES
+    )
 
     # identify likely batters and hitters
     playing_totals = assign_probable_playing_totals(pitch_data_df)
@@ -117,6 +119,8 @@ def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = 
     ]
 
     # filter out pitchers batting, and batters pitching
-    pitch_data_df = pitch_data_df.merge(valid_batters, on=["season", "batter"]).merge(valid_pitchers, on=["season", "pitcher"])
+    pitch_data_df = pitch_data_df.merge(valid_batters, on=["season", "batter"]).merge(
+        valid_pitchers, on=["season", "pitcher"]
+    )
 
     return pitch_data_df
