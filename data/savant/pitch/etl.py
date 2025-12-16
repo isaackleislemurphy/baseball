@@ -153,7 +153,7 @@ def filter_data(data_df: pd.DataFrame) -> pd.DataFrame:
         # filter out eephus pitches and "fastballs" from position players pitching
         .query(f"release_speed >= {DATA_CONSTANTS.MIN_VELO}")
         # weird pitch types
-        .query(f"description not in ('intent_ball', 'unknown_strike')")
+        .query(f"description not in {DATA_CONSTANTS.INVALID_PITCH_DESCRIPTIONS}")
         # sort for readability
         .sort_values(["game_date", "pitcher", "at_bat_number", "pitch_number"]).reset_index(drop=True)
     )
@@ -211,82 +211,88 @@ def engineer_strike_zone_features(data_df: pd.DataFrame) -> pd.DataFrame:
 
 def engineer_x_neutral_features(data_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Engineer batter-neutral features related to horizontal pitch location in a Statcast pitch data DataFrame.
+    Engineer neutral features for horizontal pitch location/movement relative to batter and pitcher handedness.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data_df : pd.DataFrame
-            A Pandas DataFrame containing Statcast pitch data to be augmented with batter-neutral features.
+        A Pandas DataFrame containing Statcast pitch data. Required columns include:
+        'pfx_x', 'plate_x', 'release_pos_x', 'bats', and 'throws'.
 
-    Returns:
-    --------
+    Returns
+    -------
     pd.DataFrame
-            A new Pandas DataFrame with added batter-neutral features for horizontal pitch location.
+        A copy of the input DataFrame with added neutral features.
 
-    Features Engineered:
-    --------------------
-    1. 'pfx_x_neutral': Horizontal movement relative to the batter (positive away, negative towards).
-    2. 'plate_x_neutral': Horizontal pitch location relative to the batter (positive away, negative towards).
-    3. 'release_pos_x_neutral': Release position relative to the batter (positive away, negative towards).
+    Features Engineered
+    -------------------
+    1. `*_batter_neutral`: Normalized to the batter's perspective.
+       - Positive (+) = Away from batter (Outside).
+       - Negative (-) = Towards batter (Inside).
+    2. `*_pitcher_neutral`: Normalized to the pitcher's perspective.
+       - Positive (+) = Arm Side
+       - Negative (-) = Glove Side
 
-    Notes:
-    ------
-    This function is used to engineer batter-neutral features that provide a standardized perspective on horizontal pitch location, considering the batter's side.
-
-    For right-handed batters, the values remain unchanged, while for left-handed batters, the values are negated to ensure consistency in analysis.
-
-    Examples:
-    ---------
-    To engineer batter-neutral features for horizontal pitch location in a Statcast pitch data DataFrame:
-
-    >>> statcast_data = retrieve_statcast_pitch_data(date_max="2023-01-31")
-    >>> enriched_data = engineer_x_neutral_features(statcast_data)
-
-    The 'enriched_data' DataFrame will contain the original data along with the newly engineered batter-neutral features.
+    Notes
+    -----
+    - **Batter Neutral:** For RHHs, standard coordinates are used (since +x is away);
+      For LHHs, values are negated so that 'Away' remains positive.
+    - **Pitcher Neutral:** For RHP, standard coordinates are used (since +x is arm-side);
+      For LHPs, values are negated so that 'Arm Side' is consistently positive.
     """
     data_df = data_df.copy()
-    # away from batter = positive value; towards/closer to batter = negative value
     for col in ["pfx_x", "plate_x", "release_pos_x"]:
-        data_df[col + "_neutral"] = data_df[[col, "bats"]].apply(
+        # away from batter = positive value; towards/closer to batter = negative value
+        data_df[col + "_batter_neutral"] = data_df[[col, "bats"]].apply(
             lambda df: df[col] if df["bats"] == "R" else -df[col], axis=1
+        )
+        # glove side = positive; armside = negative
+        data_df[col + "_pitcher_neutral"] = data_df[[col, "bats"]].apply(
+            lambda df: df[col] if df["throws"] == "R" else -df[col], axis=1
         )
     return data_df
 
 
 def parse_missingness(data_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Handle missing values in the Statcast DataFrame, particularly for Expected Weighted On-Base Average (xWOBA).
+    Analyzes missing data patterns in Statcast pitch metrics and imputes missing Expected Weighted On-Base Average (xwOBA).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data_df : pd.DataFrame
-            A Pandas DataFrame containing Statcast pitch data.
+        A Pandas DataFrame containing Statcast pitch data. Expected columns include 'release_speed',
+        'pfx_x', 'pfx_z', 'type', 'xwoba', and 'bb_type'.
 
-    Returns:
-    --------
+    Returns
+    -------
     pd.DataFrame
-            A new Pandas DataFrame with missing values handled.
+        A copy of the input DataFrame with missing 'xwoba' values imputed with 0.0 and the index reset.
 
-    Operations:
-    -----------
-    1. Drops rows where any features defined in `DATA_CONSTANTS.INPUT_VARS` are missing.
-    2. Prints summary statistics about the rows dropped and xWOBA missingness.
-    3. Imputes missing `xwoba` values with 0.0 (typically implying a non-contact or irrelevant outcome for xWOBA calculation).
+    Operations
+    ----------
+    1. Prints the percentage of missing rows for basic pitch metrics (velocity and movement).
+    2. Prints missingness statistics for 'xwoba' specifically for balls in play (type == 'X').
+    3. Prints a breakdown of missing 'xwoba' counts grouped by Batted Ball Type ('bb_type').
+    4. Imputes all missing 'xwoba' values with 0.0 globally.
     """
 
-    data_df, shape_in = data_df.copy(), data_df.shape[0]
-    data_df.dropna(subset=DATA_CONSTANTS.INPUT_VARS, inplace=True)
-    print("- # Rows dropped due to missing features:", shape_in - data_df.shape[0])
-    ### fill xwoba with 0
+    data_df = data_df.copy()
+    # see how much missingness there is w/ basic pitch metrics
+    for metric in ("release_speed", "pfx_x", "pfx_z"):
+        print(
+            f"- % Rows missing {metric}:",
+            np.round(100 * data_df[metric].isna().mean(), 2),
+        )
+    # see how many xwobas are missing
     print(
         "- % Rows missing xWOBA:",
-        np.round(100 * data_df.query("type == 'X'").xwoba.isna().mean(), 2),
+        np.round(100 * data_df.query("type == 'X'")["xwoba"].isna().mean(), 2),
     )
-    print("- # Rows missing xWOBA:", data_df.query("type == 'X'").xwoba.isna().sum())
+    print("- # Rows missing xWOBA:", data_df.query("type == 'X'")["xwoba"].isna().sum())
     print(
         "- BB Types with missing xWOBA: ",
         data_df.query("type == 'X'")
-        .loc[data_df.query("type == 'X'").xwoba.isna()]
+        .loc[data_df.query("type == 'X'")["xwoba"].isna()]
         .groupby(["bb_type"], as_index=False)["pitch_number"]
         .count(),
     )
