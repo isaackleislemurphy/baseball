@@ -14,20 +14,32 @@ from baseball.constants import SHOHEI_OHTANI
 
 def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Assigns probable player roles (batter or pitcher) based on plate appearances (PAs) and batters faced (BFs)
-    in a given season. If a player has more PA than TBF in a given season, they're labeled as a likely batter.
-    Conversely, if they have more TBF than PA in a given season, they're labeled as a likely pitcher.
+    Classify players as 'likely batter' or 'likely pitcher' based on seasonal usage.
 
-    Returns:
-        pd.DataFrame: A DataFrame with the following columns:
-            - 'season': The season of the data.
-            - 'player': The identifier (usually MLBAM) for the player (batter or pitcher).
-            - 'pas': The total plate appearances for the player (if a batter).
-            - 'bfs': The total batters faced for the player (if a pitcher).
-            - 'is_likely_pitcher': A binary indicator (1.0 or 0.0) denoting whether the player is more likely
-                a pitcher.
-            - 'is_likely_batter': A binary indicator (1.0 or 0.0) denoting whether the player is more likely
-                a batter.
+    This function aggregates Plate Appearances (PA) and Batters Faced (BF) for every player
+    in a given season. It creates binary flags to filter out position players pitching
+    or pitchers batting during analysis. Kind of hacky, but Chadwick Github is spotty
+    particularly with recent call ups so just doing it this way.
+
+    Parameters
+    ----------
+    pitch_df : pd.DataFrame
+        Standard pitch-level DataFrame containing 'game_pk', 'at_bat_number', 'pitch_number',
+        'batter', 'pitcher', and 'season'.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame keyed by ['season', 'player'] with the following columns:
+        - 'pas': Total plate appearances as a batter.
+        - 'bfs': Total batters faced as a pitcher.
+        - 'is_likely_pitcher': 1.0 if BF >= PA (or if player is Shohei Ohtani).
+        - 'is_likely_batter': 1.0 if PA >= BF (or if player is Shohei Ohtani).
+
+    Notes
+    -----
+    Includes a hardcoded exception for Shohei Ohtani, who is flagged as both a likely
+    pitcher and a likely batter regardless of the specific PA/BF ratio for that season.
     """
     # roll up pitches --> PAs
     pa_df = (
@@ -64,8 +76,29 @@ def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
     return playing_totals
 
 
-def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = "2025-08-01") -> pd.DataFrame:
-    """ """
+def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = "2025-12-01") -> pd.DataFrame:
+    """
+    Load pitch data and filter for valid pitcher-vs-batter matchups.
+
+    This function orchestrates the data pipeline for pitch quality modeling by:
+    1. Loading raw pitch data for the specified date range.
+    2. Encoding pitch outcomes into categorical indices.
+    3. Filtering out "novelty" matchups (e.g., position players pitching) to ensure
+       the model trains only on professional-standard pitching and hitting interactions.
+
+    Parameters
+    ----------
+    date_min : str, default "2025-01-01"
+        The start date for data retrieval (YYYY-MM-DD).
+    date_max : str, default "2025-08-01"
+        The end date for data retrieval (YYYY-MM-DD).
+
+    Returns
+    -------
+    pd.DataFrame
+        A cleaned DataFrame containing pitch-level data where both the pitcher and
+        batter are deemed "likely" occupants of their respective roles.
+    """
     # load the pitch-level data
     data_df = load_pitch_data(date_min="2023-01-01", date_max="2023-08-01")
 
