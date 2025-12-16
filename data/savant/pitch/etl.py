@@ -241,13 +241,14 @@ def engineer_x_neutral_features(data_df: pd.DataFrame) -> pd.DataFrame:
       For LHPs, values are negated so that 'Arm Side' is consistently positive.
     """
     data_df = data_df.copy()
+
     for col in ["pfx_x", "plate_x", "release_pos_x"]:
         # away from batter = positive value; towards/closer to batter = negative value
         data_df[col + "_batter_neutral"] = data_df[[col, "bats"]].apply(
             lambda df: df[col] if df["bats"] == "R" else -df[col], axis=1
         )
         # glove side = positive; armside = negative
-        data_df[col + "_pitcher_neutral"] = data_df[[col, "bats"]].apply(
+        data_df[col + "_pitcher_neutral"] = data_df[[col, "throws"]].apply(
             lambda df: df[col] if df["throws"] == "R" else -df[col], axis=1
         )
     return data_df
@@ -430,7 +431,8 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.t
 
     The 'loaded_data' DataFrame will contain the cleaned, enriched, and engineered pitch data ready for analysis.
     """
-    data_df = retrieve_statcast_pitch_data(date_max=date_max, date_min=date_min)  # FIXME
+    # load the raw data
+    data_df = retrieve_statcast_pitch_data(date_max=date_max, date_min=date_min)
 
     # apply data cleaning pipeline
     data_df = (
