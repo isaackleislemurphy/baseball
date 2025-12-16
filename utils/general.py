@@ -39,10 +39,25 @@ def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0
 
 def write_pickled_object(obj: Any, path: str | Path) -> None:
     """
-    Serialize an object to disk using pickle.
+    Serialize a Python object to disk using the highest pickle protocol.
 
-    - Creates parent directories if needed
-    - Uses highest protocol for speed/size
+    Parameters
+    ----------
+    obj : Any
+        The Python object to be serialized.
+    path : str | Path
+        The destination file path where the object will be saved.
+
+    Returns
+    -------
+    None
+
+    Notes
+    -----
+    - This function automatically creates any missing parent directories for the
+      specified path using `mkdir(parents=True)`.
+    - It uses `pickle.HIGHEST_PROTOCOL` to ensure the most efficient serialization
+      available for the running Python version.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -53,7 +68,17 @@ def write_pickled_object(obj: Any, path: str | Path) -> None:
 
 def load_pickled_object(path: str | Path) -> Any:
     """
-    Load a pickled object from disk.
+    Deserialize and load a Python object from a pickle file.
+
+    Parameters
+    ----------
+    path : str | Path
+        The file path pointing to the pickled object.
+
+    Returns
+    -------
+    Any
+        The deserialized Python object.
     """
     path = Path(path)
 
