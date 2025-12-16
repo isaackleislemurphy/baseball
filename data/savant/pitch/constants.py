@@ -30,6 +30,8 @@ MIN_STATCAST_DATE = "2016-04-03"
 # Game types to include
 GAME_TYPES = "W", "L", "D", "F", "R"
 
+# don't like these statcast column names, so renaming them
+# to something more intuitive
 STATCAST_RENAMINGS = {
     "stand": "bats",
     "p_throws": "throws",
@@ -38,6 +40,7 @@ STATCAST_RENAMINGS = {
 }
 
 
+# map pitch types to pitch groupings.
 FA_TYPES = "FF", "SI"
 BB_TYPES = "FC", "SL", "ST", "CU", "KC", "SC", "SV"
 OS_TYPES = "FS", "CH", "FO", "SC"
@@ -49,25 +52,11 @@ PITCH_GROUP_MAPPINGS = {
     **{key: "OS" for key in OS_TYPES},
 }
 
+# indices for pitch groups, if it ever comes in handy
 PITCH_GROUP_INDICES = {"FA": 0, "BB": 1, "OS": 2}
 
+# expect pitches to be thrown at least this hard
 MIN_VELO = 66
-
-INPUT_VARS = [
-    # velo features
-    "release_speed",
-    # movement features
-    "pfx_z",
-    "pfx_x_neutral",
-    # release position features
-    "release_pos_z",
-    "release_pos_x_neutral",
-    "release_extension",
-    # command features
-    # "plate_z_mid_zone_sc",
-    # "plate_x_neutral"
-]
-
 
 PITCH_OUTCOME_CATEGORY_MAPPINGS = {
     "called_strike": "called_strike",
