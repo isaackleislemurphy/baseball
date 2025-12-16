@@ -69,3 +69,6 @@ PITCH_OUTCOME_CATEGORY_MAPPINGS = {
     "foul_tip": "foul",
     "hit_by_pitch": "hbp",
 }
+
+# if the `description` field is this, ignore the pitch
+INVALID_PITCH_DESCRIPTIONS = ("intent_ball", "unknown_strike")
