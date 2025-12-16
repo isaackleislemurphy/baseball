@@ -8,7 +8,7 @@ import pybaseball as pb
 
 from baseball.data.chadwick.ids import load_raw_chadwick_people_csvs
 from baseball.data.savant.pitch.etl import load_pitch_data
-from baseball.projects.pitch_value.data.constants import CATEGORICAL_RESPONSE_INDICES
+from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.constants import SHOHEI_OHTANI
 
 
@@ -100,13 +100,13 @@ def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = 
         batter are deemed "likely" occupants of their respective roles.
     """
     # load the pitch-level data
-    data_df = load_pitch_data(date_min="2023-01-01", date_max="2023-08-01")
+    pitch_data_df = load_pitch_data(date_min="2023-01-01", date_max="2023-08-01")
 
     # make the categorical response index
-    data_df["categorical_response_idx"] = data_df["pitch_outcome_category"].replace(CATEGORICAL_RESPONSE_INDICES)
+    pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(CATEGORICAL_RESPONSE_INDICES)
 
     # identify likely batters and hitters
-    playing_totals = assign_probable_playing_totals(data_df)
+    playing_totals = assign_probable_playing_totals(pitch_data_df)
 
     # identify real batters and pitchers
     valid_batters = playing_totals.query("is_likely_batter == 1").rename(columns={"player": "batter"})[
@@ -117,6 +117,6 @@ def load_pitch_quality_model_data(date_min: str = "2025-01-01", date_max: str = 
     ]
 
     # filter out pitchers batting, and batters pitching
-    data_df = data_df.merge(valid_batters, on=["season", "batter"]).merge(valid_pitchers, on=["season", "pitcher"])
+    pitch_data_df = pitch_data_df.merge(valid_batters, on=["season", "batter"]).merge(valid_pitchers, on=["season", "pitcher"])
 
-    return data_df
+    return pitch_data_df
