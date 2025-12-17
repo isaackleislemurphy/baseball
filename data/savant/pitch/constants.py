@@ -74,3 +74,12 @@ PITCH_OUTCOME_CATEGORY_MAPPINGS = {
 
 # if the `description` field is this, ignore the pitch
 INVALID_PITCH_DESCRIPTIONS = ("intent_ball", "unknown_strike")
+
+
+# where are we
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Where the partition cache file will be saved.
+RAW_PITCH_CSV_FOLDER = "csvs"
+RAW_PITCH_CSV_FILENAME = "raw-pitch-df.csv"
+RAW_PITCH_CSV_PATH = os.path.join(SCRIPT_DIR, RAW_PITCH_CSV_FOLDER, RAW_PITCH_CSV_FILENAME)
