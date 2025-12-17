@@ -24,6 +24,8 @@ Statcast-defined pitch mappings
         }
 """
 
+import os
+
 # O.D. 2016: https://en.wikipedia.org/wiki/2016_Major_League_Baseball_season
 MIN_STATCAST_DATE = "2016-04-03"
 
