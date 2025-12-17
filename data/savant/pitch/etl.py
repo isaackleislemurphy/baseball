@@ -388,7 +388,12 @@ def engineer_count_indicators(data_df: pd.DataFrame) -> pd.DataFrame:
     return data_df
 
 
-def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.today().date())) -> pd.DataFrame:
+def load_pitch_data(
+    date_min: str = "2020-01-01",
+    date_max: str = str(datetime.today().date()),
+    load_from_cache: bool = False,
+    save_to_cache: bool = True,
+) -> pd.DataFrame:
     """
     Load, preprocess, and engineer features for a Statcast pitch data DataFrame.
 
@@ -431,6 +436,9 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.t
 
     The 'loaded_data' DataFrame will contain the cleaned, enriched, and engineered pitch data ready for analysis.
     """
+    if load_from_cache:
+        print(f"Loading cached CSV from: {DATA_CONSTANTS.RAW_PITCH_CSV_PATH}")
+        return pd.read_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH)
     # load the raw data
     data_df = retrieve_statcast_pitch_data(date_max=date_max, date_min=date_min)
 
@@ -457,5 +465,9 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = str(datetime.t
     data_df["tracking_mask"] = data_df.pitch_outcome_category.values == "bip"
     # make sure data is in good shape
     test_data_integrity(data_df)
+
+    if save_to_cache:
+        print(f"Saving cached (raw) pitches along {DATA_CONSTANTS.RAW_PITCH_CSV_PATH}")
+        data_df.to_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH, index=False)
 
     return data_df
