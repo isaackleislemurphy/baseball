@@ -11,30 +11,17 @@ It ensures that:
         That way, you can just load in the CSV and retrain whenever/wherever
 """
 
-import os
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
 
 from baseball.data.savant.pitch.etl import load_pitch_data
-
-# where are we
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Fixed seed for the random number generator to ensure the train/test split
-# is identical every time the code is run (reproducibility).
-TRAINING_PARTITION_SEED = 2025
-
-# The number of quantile bins to group pitchers into based on their arm angle.
-# This ensures the split is stratified: we want a roughly equal distribution of
-# slots acrosss both the training and test sets.
-NUM_ARM_ANGLE_STRATIFICATION_BINS = 20
-
-# Where the partition cache file will be saved.
-PARTITION_CSV_FOLDER = "csvs"
-PARTITION_CSV_FILENAME = "pitcher-id-partitions.csv"
-PARTITION_CSV_PATH = os.path.join(SCRIPT_DIR, PARTITION_CSV_FOLDER, PARTITION_CSV_FILENAME)
+from baseball.projects.pitch_quality.data.constants import (
+    NUM_ARM_ANGLE_STRATIFICATION_BINS,
+    PARTITION_CSV_PATH,
+    TRAINING_PARTITION_SEED,
+)
 
 
 def cache_training_partitions() -> None:
