@@ -15,7 +15,8 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, Kernel, WhiteKernel
 from sklearn.preprocessing import StandardScaler
 
-from baseball.data.savant.pitch.etl import filter_to_training_data, load_pitch_data
+from baseball.data.savant.pitch.etl import load_pitch_data
+from baseball.projects.pitch_quality.data.etl import filter_to_training_data
 from baseball.utils.general import load_pickled_object, write_pickled_object
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -272,7 +273,14 @@ def cache_expected_movement_models() -> None:
 
 
 def load_expected_movement_models() -> ExpectedMovement:
-    """ """
+    """
+    Loads a trained expected movement model suite.
+
+    Returns
+    -------
+    ExpectedMovement
+        An instantiated and fitted `ExpectedMovement` object.
+    """
     return load_pickled_object(XMVMT_OBJECT_PATH)
 
 
