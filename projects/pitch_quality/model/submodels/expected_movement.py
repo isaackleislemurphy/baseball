@@ -6,19 +6,26 @@ expectations (horizontal and vertical break) based on a pitcher's
 basic, physical release characteristics (arm angle and velocity).
 """
 
+import os
 import itertools
 import numpy as np
 import pandas as pd
 
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RationalQuadratic, WhiteKernel, Kernel
+from sklearn.gaussian_process.kernels import WhiteKernel, Kernel, RBF
 from sklearn.preprocessing import StandardScaler
+
+from baseball.data.savant.pitch.etl import load_pitch_data, filter_to_training_data
+from baseball.utils.general import write_pickled_object, load_pickled_object
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+XMVMT_OBJECT_PATH = os.path.join(SCRIPT_DIR.replace("submodels", "objects"), "xmvmt_models.pkl")
 
 # Inputs: basic physical characteristics of the release
 EXPECTED_MVMT_INPUTS = ["arm_angle", "release_speed"]
 
 # Outputs: basic movement metrics to model. No SSW for now.
-EXPECTED_MVMT_OUTPUTS = ["pfx_x_pitcher_neutral", "pfx_z"]
+EXPECTED_MVMT_OUTPUTS = ["pfx_z", "pfx_x_pitcher_neutral"]
 
 # Minimum sample size to include a pitcher-season in the training set
 MIN_EXPECTED_MVMT_PITCHES = 25
@@ -48,9 +55,12 @@ class ExpectedMovement:
 
     def __init__(
         self,
-        pitch_types: tuple[str] = ("FF", "SI"),
-        kernel: Kernel = RationalQuadratic() + WhiteKernel(noise_level=1e-2),
-        random_state: int = 2025,
+        pitch_types: tuple[str] = ("SI", "FF"),
+        kernel: Kernel = (
+            RBF(length_scale=1e-1, length_scale_bounds=(1e-2, 1e3))
+            + WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-10, 1e1))
+        ),  # Quadratic() + WhiteKernel(noise_level=1e-4),
+        random_state: int = 2026,
     ) -> None:
         """
         Initialize the ExpectedMovement model structure.
@@ -81,6 +91,7 @@ class ExpectedMovement:
                 kernel=kernel,
                 normalize_y=True,
                 random_state=random_state,
+                n_restarts_optimizer=10,
             )
             for pitch_type, output in itertools.product(self.pitch_types, self.outputs)
         }
@@ -205,4 +216,60 @@ class ExpectedMovement:
                 # predict for rows where it's the right pitch type
                 y_hat[pitch_type_idx, col] = self.fits[(pitch_type, output)].predict(x_hat[pitch_type_idx])
 
-        return pd.DataFrame(y_hat, columns=["x_" + item for item in self.outputs], index=pred_df.index)
+        y_hat = pd.DataFrame(y_hat, columns=["x_" + item for item in self.outputs], index=pred_df.index)
+        return pd.concat([pred_df, y_hat], axis=1)
+
+
+def train_expected_movement_models() -> ExpectedMovement:
+    """
+    Train the Expected Movement (xMovement) models on historical training data.
+
+    This function performs the following steps:
+    1. Loads cached pitch data.
+    2. Filters the data to include only games occurring on or before `TRAIN_TEST_CUTOFF_DATE`.
+    3. Restricts the data to the specific subset of pitchers designated for training
+       (via `load_training_partitions`) to prevent data leakage.
+    4. Instantiates and fits the `ExpectedMovement` Gaussian Process models.
+
+    Returns
+    -------
+    ExpectedMovement
+        The fitted ExpectedMovement model suite, ready for prediction or serialization.
+    """
+
+    # load pitch data
+    pitch_data_df_train = load_pitch_data(load_from_cache=True)
+
+    # trim it down to only training data
+    pitch_data_df_train = filter_to_training_data(pitch_data_df_train)
+
+    # instantiate xmovement models
+    xmvmt_models = ExpectedMovement()
+    print("xMovement models instantiated.")
+
+    # fit 'em
+    xmvmt_models.fit(pitch_data_df_train)
+    print("xMovement models fit.")
+
+    return xmvmt_models
+
+
+def cache_expected_movement_models() -> None:
+    """
+    Train and serialize the Expected Movement models to disk.
+
+    This acts as the main entry point for the training pipeline. It triggers the
+    training process via `train_expected_movement_models` and pickles the resulting
+    object to the path defined in `XMVMT_OBJECT_PATH`.
+
+    Returns
+    -------
+    None
+    """
+    xmvmt_models = train_expected_movement_models()
+    write_pickled_object(xmvmt_models, XMVMT_OBJECT_PATH)
+    print(f"Expected movement model saved along: {XMVMT_OBJECT_PATH}")
+
+
+if __name__ == "__main__":
+    cache_expected_movement_models()
