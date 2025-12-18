@@ -124,7 +124,24 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
 
 
 def filter_to_training_data(pitch_data_df: pd.DataFrame) -> pd.DataFrame:
-    """ """
+    """
+    Filter the input pitch data to the designated training set.
+
+    This function applies two filters:
+    1. **Temporal:** Restricts data to games occurring on or before `TRAIN_TEST_CUTOFF_DATE`.
+    2. **Entity-based:** Restricts data to the specific subset of pitchers assigned to the 
+       training partition via `load_training_partitions`. 
+
+    Parameters
+    ----------
+    pitch_data_df : pd.DataFrame
+        The raw pitch data to filter. Must contain 'game_date' and 'pitcher' columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        A subset of the input DataFrame corresponding strictly to the training split.
+    """
 
     # load pitch data, and trim it under `TRAIN_TEST_CUTOFF_DATE`
     pitch_data_df_train = pitch_data_df.query(f"game_date <= '{TRAIN_TEST_CUTOFF_DATE}'")
