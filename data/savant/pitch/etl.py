@@ -443,7 +443,11 @@ def load_pitch_data(
     """
     if load_from_cache:
         print(f"Loading cached CSV from: {DATA_CONSTANTS.RAW_PITCH_CSV_PATH}")
-        return pd.read_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH)
+        return (
+            pd.read_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH)
+            .query(f"game_date >= '{date_min}' & game_date <= '{date_max}'")
+            .reset_index(drop=True)
+        )
     # load the raw data
     data_df = retrieve_statcast_pitch_data(date_max=date_max, date_min=date_min)
 
