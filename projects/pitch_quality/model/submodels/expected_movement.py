@@ -37,7 +37,7 @@ class ExpectedMovement:
     A model suite for predicting expected pitch movement based on release characteristics.
 
     This class trains separate Gaussian Process Regressors for specific pitch types
-    (e.g., Fastballs, Sinkers) to predict horizontal and vertical movement
+    (for now, FF and SI) to predict horizontal and vertical movement
     based on arm angle and release speed.
 
     Attributes
