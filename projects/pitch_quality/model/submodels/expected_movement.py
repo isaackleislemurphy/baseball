@@ -6,17 +6,17 @@ expectations (horizontal and vertical break) based on a pitcher's
 basic, physical release characteristics (arm angle and velocity).
 """
 
-import os
 import itertools
+import os
+
 import numpy as np
 import pandas as pd
-
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import WhiteKernel, Kernel, RBF
+from sklearn.gaussian_process.kernels import RBF, Kernel, WhiteKernel
 from sklearn.preprocessing import StandardScaler
 
-from baseball.data.savant.pitch.etl import load_pitch_data, filter_to_training_data
-from baseball.utils.general import write_pickled_object, load_pickled_object
+from baseball.data.savant.pitch.etl import filter_to_training_data, load_pitch_data
+from baseball.utils.general import load_pickled_object, write_pickled_object
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 XMVMT_OBJECT_PATH = os.path.join(SCRIPT_DIR.replace("submodels", "objects"), "xmvmt_models.pkl")
@@ -269,6 +269,11 @@ def cache_expected_movement_models() -> None:
     xmvmt_models = train_expected_movement_models()
     write_pickled_object(xmvmt_models, XMVMT_OBJECT_PATH)
     print(f"Expected movement model saved along: {XMVMT_OBJECT_PATH}")
+
+
+def load_expected_movement_models() -> ExpectedMovement:
+    """ """
+    return load_pickled_object(XMVMT_OBJECT_PATH)
 
 
 if __name__ == "__main__":
