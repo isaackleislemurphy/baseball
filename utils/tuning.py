@@ -2,19 +2,17 @@
 Hyperparamter tuning using GPs as a emulator model to approximate the loss landscape of an estimator.
 """
 
-from tqdm import trange
 from typing import Any, Callable, Dict, Literal, Optional
+
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
 from scipy.optimize import minimize
-
-from sklearn.metrics import make_scorer, mean_absolute_error
-from sklearn.model_selection import cross_val_score, BaseCrossValidator, KFold
+from scipy.stats import norm
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RationalQuadratic
-from sklearn.gaussian_process.kernels import WhiteKernel
-from sklearn.gaussian_process.kernels import Kernel
+from sklearn.gaussian_process.kernels import Kernel, RationalQuadratic, WhiteKernel
+from sklearn.metrics import make_scorer, mean_absolute_error
+from sklearn.model_selection import BaseCrossValidator, KFold, cross_val_score
+from tqdm import trange
 
 # keys for the `random_state` attribute in `GPHPTuner`. Setting up like this
 # in case I add more bells/whistles that require stochasticity
