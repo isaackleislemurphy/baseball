@@ -5,8 +5,9 @@ mapping.
 CSVs live here: https://github.com/chadwickbureau/register/tree/master/data
 """
 
-import urllib
 import string
+import urllib
+
 import pandas as pd
 
 CHADWICK_PEOPLE_CSV_LINK = (
