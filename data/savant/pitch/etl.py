@@ -392,7 +392,7 @@ def load_pitch_data(
     date_min: str = "2020-01-01",
     date_max: str = str(datetime.today().date()),
     load_from_cache: bool = False,
-    save_to_cache: bool = True,
+    save_to_cache: bool = False,
 ) -> pd.DataFrame:
     """
     Load, preprocess, and engineer features for a Statcast pitch data DataFrame.
@@ -403,6 +403,11 @@ def load_pitch_data(
             The earliest date to include in the dataset.
     date_max : str, default=today
             The latest date to include in the dataset.
+    load_from_cache : bool, default=False
+        If True, this will retrieve the latest saved CSV, along `DATA_CONSTANTS.RAW_PITCH_CSV_PATH`
+    save_to_cache : bool, default=False
+        If True, this will cache your data pull and save it as a CSV, along
+        `DATA_CONSTANTS.RAW_PITCH_CSV_PATH`.
 
     Returns:
     --------
