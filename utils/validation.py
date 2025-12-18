@@ -1,11 +1,11 @@
 """ """
 
 from typing import Optional
+
 import numpy as np
 import pandas as pd
-
-from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
 from scipy.stats import spearmanr
+from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
 
 
 def score_regression(
