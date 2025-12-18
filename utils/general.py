@@ -37,7 +37,7 @@ def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0
     return dates.query(f"n_obs <= {1 - pct_test}")[date_col].iloc[-1]
 
 
-def write_pickled_object(obj: Any, path: str | Path) -> None:
+def write_pickled_object(obj: Any, path: str) -> None:
     """
     Serialize a Python object to disk using the highest pickle protocol.
 
@@ -45,7 +45,7 @@ def write_pickled_object(obj: Any, path: str | Path) -> None:
     ----------
     obj : Any
         The Python object to be serialized.
-    path : str | Path
+    path : str
         The destination file path where the object will be saved.
 
     Returns
@@ -66,13 +66,13 @@ def write_pickled_object(obj: Any, path: str | Path) -> None:
         pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def load_pickled_object(path: str | Path) -> Any:
+def load_pickled_object(path: str) -> Any:
     """
     Deserialize and load a Python object from a pickle file.
 
     Parameters
     ----------
-    path : str | Path
+    path : str
         The file path pointing to the pickled object.
 
     Returns
