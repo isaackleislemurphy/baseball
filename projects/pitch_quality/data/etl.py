@@ -2,10 +2,10 @@
 
 import pandas as pd
 
-from baseball.data.savant.pitch.etl import load_pitch_data
-from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.constants import SHOHEI_OHTANI
+from baseball.data.savant.pitch.etl import load_pitch_data
 from baseball.projects.pitch_quality.data.cache_training_partitions import load_training_partitions
+from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.projects.pitch_quality.model.constants import TRAIN_TEST_CUTOFF_DATE
 
 
@@ -129,8 +129,8 @@ def filter_to_training_data(pitch_data_df: pd.DataFrame) -> pd.DataFrame:
 
     This function applies two filters:
     1. **Temporal:** Restricts data to games occurring on or before `TRAIN_TEST_CUTOFF_DATE`.
-    2. **Entity-based:** Restricts data to the specific subset of pitchers assigned to the 
-       training partition via `load_training_partitions`. 
+    2. **Entity-based:** Restricts data to the specific subset of pitchers assigned to the
+       training partition via `load_training_partitions`.
 
     Parameters
     ----------
