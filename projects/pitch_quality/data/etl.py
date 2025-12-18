@@ -73,7 +73,9 @@ def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
     return playing_totals
 
 
-def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = "2025-12-01") -> pd.DataFrame:
+def load_pitch_quality_model_data(
+    date_min: str = "2020-01-01", date_max: str = "2025-12-01", **kwargs: dict
+) -> pd.DataFrame:
     """
     Load pitch data and filter for valid pitcher-vs-batter matchups.
 
@@ -89,6 +91,8 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
         The start date for data retrieval (YYYY-MM-DD).
     date_max : str, default "2025-08-01"
         The end date for data retrieval (YYYY-MM-DD).
+    **kwargs : dict
+        Keyword arguments for `load_pitch_data()`
 
     Returns
     -------
@@ -97,7 +101,7 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
         batter are deemed "likely" occupants of their respective roles.
     """
     # load the pitch-level data
-    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max)
+    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max, **kwargs)
 
     # make the categorical response index
     pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(
