@@ -5,6 +5,8 @@ import pandas as pd
 from baseball.data.savant.pitch.etl import load_pitch_data
 from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.constants import SHOHEI_OHTANI
+from baseball.projects.pitch_quality.data.cache_training_partitions import load_training_partitions
+from baseball.projects.pitch_quality.model.constants import TRAIN_TEST_CUTOFF_DATE
 
 
 def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
@@ -119,3 +121,15 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
     )
 
     return pitch_data_df
+
+
+def filter_to_training_data(pitch_data_df: pd.DataFrame) -> pd.DataFrame:
+    """ """
+
+    # load pitch data, and trim it under `TRAIN_TEST_CUTOFF_DATE`
+    pitch_data_df_train = pitch_data_df.query(f"game_date <= '{TRAIN_TEST_CUTOFF_DATE}'")
+
+    # restrict to training pitchers
+    partition_df = load_training_partitions().query("train == 1")
+    pitch_data_df_train = pitch_data_df_train.merge(partition_df[["pitcher"]], on="pitcher")
+    return pitch_data_df_train
