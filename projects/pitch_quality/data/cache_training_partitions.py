@@ -62,21 +62,19 @@ def cache_training_partitions() -> None:
         .fit_transform(pitchers[["arm_angle"]].values)
         .astype(int)
     )
-
     # partition the pitchers
     pitchers_train, pitchers_test = train_test_split(
-        pitchers["pitcher"].values,
+        pitchers,
         test_size=0.25,
         random_state=TRAINING_PARTITION_SEED,
         shuffle=True,
         stratify=pitchers["strat_bin"].values,
     )
-
     # put everything together
     partition_df = pd.concat(
         [
-            pd.DataFrame(dict(pitcher=pitchers_train, train=1, test=0)),
-            pd.DataFrame(dict(pitcher=pitchers_test, train=0, test=1)),
+            pitchers_train.assign(train=1, test=0),
+            pitchers_train.assign(train=0, test=1),
         ],
         axis=0,
     ).reset_index(drop=True)
