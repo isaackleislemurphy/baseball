@@ -226,7 +226,31 @@ class ExpectedMovement:
         return pd.concat([pred_df, y_hat], axis=1)
 
     def predict(self, pred_df: pd.DataFrame, chunk_size: int = 5_000, use_parallel: bool = False) -> pd.DataFrame:
-        """ """
+        """
+        Wrapper around `._predict()` for public-facing `predict()` method. Idea here is to do things in chunks,
+        since matrix ops for a zillion unchunked rows w/ a GP will get huge (no idea why sklearn hasn't built
+        this in)
+
+        Parameters
+        ----------
+        pred_df : pd.DataFrame
+            The input DataFrame containing the pitch data to predict on.
+            Must contain the feature columns specified in `self.inputs` (e.g., 'arm_angle', 'release_speed')
+            and the 'pitch_type' column to route predictions to the correct submodel.
+        chunk_size : int, default=5_000
+            Chunk size for GP prediction, for memory management. Default is 5K.
+        use_parallel : bool, default=False
+            If True, allows you to do the prediction in parallel w/ joblib. Can save time for huge prediction
+            tasks.
+
+        Returns
+        -------
+        pd.DataFrame
+            A DataFrame containing the predicted "expected" movement values.
+            - Columns are prefixed with "x_" (e.g., 'x_pfx_z').
+            - The index matches the index of the input `pred_df`.
+            - Rows corresponding to pitch types not included in `self.pitch_types` will contain NaNs.
+        """
         if use_parallel:
             _predict_df = lambda i: self._predict(pred_df.iloc[i : i + chunk_size])
             return Parallel(n_jobs=-1, verbose=2)(
