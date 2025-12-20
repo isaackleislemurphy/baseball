@@ -104,7 +104,8 @@ class GPHPTuner:
         estimator: Any,
         params_continuous: Dict[str, Any],
         params_discrete: Dict[str, Any],
-        kernel: Kernel = RationalQuadratic() + WhiteKernel(noise_level=1e-4),
+        kernel: Kernel = RationalQuadratic(length_scale=1e-1, length_scale_bounds=(1e-3, 1e3))
+        + WhiteKernel(noise_level=1e-4),
         cv: int = 20,
         loss_fn: Callable = mean_absolute_error,
         kfold: BaseCrossValidator = KFold,
@@ -137,7 +138,8 @@ class GPHPTuner:
         loss_fn : Callable, default=sklearn.metrics.mean_absolute_error
             The loss function to minimize. Must be compatible with sklearn's `make_scorer`.
         kfold : BaseCrossValidator, default=KFold
-            An sklearn cross validator, to manage splitting.
+            An (callable) sklearn cross validator, to manage splitting. Don't pass something instantiated
+            here.
         """
         # make sure random states key dict is completely full
         self.random_states = {
@@ -145,8 +147,8 @@ class GPHPTuner:
         }
         # stash estimator, kfold, and loss function
         self.estimator = estimator
-        self.kfold = kfold(n_splits=cv, shuffle=True, random_state=self.random_states["kfold"])
         self.loss_fn = make_scorer(loss_fn)
+        self.kfold = kfold(n_splits=cv, shuffle=True, random_state=self.random_states["kfold"])
 
         # everything related to discrete params goes in here
         self.params_discrete = params_discrete  # discrete hyparameter names
@@ -277,7 +279,7 @@ class GPHPTuner:
             None, :
         ]  # (1, P)
 
-    def _cv_score(self, x: np.ndarray, y: np.ndarray, params: Dict) -> np.ndarray:
+    def _cv_score(self, x: np.ndarray, y: np.ndarray, params: Dict, groups: Optional[np.ndarray] = None) -> np.ndarray:
         """
         Calculate the Cross-Validation score for a set of hyperparameters.
 
@@ -287,6 +289,8 @@ class GPHPTuner:
             The training features (inputs).
         y : np.ndarray
             The training targets (responses).
+        groups : np.ndarray, optional
+            Optional `groups` parameter to be passed to scikit-learn's `cross_val_score`.
         params : Dict
             The hyperparameter configuration to evaluate.
 
@@ -296,7 +300,13 @@ class GPHPTuner:
             Array of scores from cross-validation.
         """
         return cross_val_score(
-            self.estimator.set_params(**params), x, y, cv=self.kfold, scoring=self.loss_fn, n_jobs=-1
+            self.estimator.set_params(**params),
+            x,
+            y,
+            groups=groups,
+            cv=self.kfold,
+            scoring=self.loss_fn,
+            n_jobs=-1,
         )
 
     def _scale_xh(self, h: np.ndarray) -> np.ndarray:
@@ -384,7 +394,9 @@ class GPHPTuner:
         yl_hat = self.approx.predict(xh, return_std=False)
         return yl_hat
 
-    def _run_random_search(self, x: np.ndarray, y: np.ndarray, n_iter: int = 50) -> None:
+    def _run_random_search(
+        self, x: np.ndarray, y: np.ndarray, groups: Optional[np.ndarray] = None, n_iter: int = 50
+    ) -> None:
         """
         Execute a random search (burn-in) phase to initialize the history. Gotta give the
         emulator something to train on.
@@ -395,6 +407,8 @@ class GPHPTuner:
             The training features.
         y : np.ndarray
             The training targets.
+        groups : np.ndarray, optional
+            Optional `groups` parameter to be passed to scikit-learn's `cross_val_score`.
         n_iter : int, default=50
             Number of random configurations to evaluate.
         """
@@ -408,7 +422,7 @@ class GPHPTuner:
             )
             params_iter = self._propose_random_param_config(random_state=random_state)
             # CV-scoring under those parameters
-            yl_iter = self._cv_score(x, y, params_iter)
+            yl_iter = self._cv_score(x=x, y=y, groups=groups, params=params_iter)
             # update the inputs, for eventual use in the GP
             self.xh_continuous += [[params_iter[item] for item in self.param_names_continuous]]
             self.xh_discrete += [[params_iter[item] for item in self.param_names_discrete]]
@@ -481,6 +495,7 @@ class GPHPTuner:
         self,
         x: np.ndarray,
         y: np.ndarray,
+        groups: Optional[np.ndarray] = None,
         n_random_burn_in: int = 50,
         n_gp_iter: int = 25,
         n_gp_restarts: int = 10,
@@ -500,6 +515,8 @@ class GPHPTuner:
             The training features. Note that these are the _actual_ model inputs.
         y : np.ndarray
             The training targets. Note that these are the _actual_ model responses.
+        groups : np.ndarray, optional
+            Optional `groups` parameter to be passed to scikit-learn's `cross_val_score`.
         n_random_burn_in : int, default=50
             Number of random points to evaluate before starting GP optimization.
         n_gp_iter : int, default=25
@@ -513,7 +530,7 @@ class GPHPTuner:
             - "stochastic": Samples many points and picks the minimum.
         """
         # randomly search `n_random_burn_in` points; you'll start your GP approximation training on this.
-        self._run_random_search(x, y, n_iter=n_random_burn_in)
+        self._run_random_search(x, y, groups=groups, n_iter=n_random_burn_in)
 
         # fit the initial approx gp
         self._fit_gp()
@@ -562,7 +579,7 @@ class GPHPTuner:
                 },
             }
             # score the model with the new, proposed params
-            yl_iter = self._cv_score(x, y, params_iter)
+            yl_iter = self._cv_score(x=x, y=y, groups=groups, params=params_iter)
 
             # -----------------------------------------------------------------------------------
             # 4.) Update inputs/outputs for GP approximation
@@ -581,6 +598,15 @@ class GPHPTuner:
         param_summary = pd.DataFrame(
             self._unscale_xh(self._get_xh()), columns=self.param_names_continuous + self.param_names_discrete
         )
-        param_summary.iloc[:, -self.dim_discrete :] = param_summary.iloc[:, -self.dim_discrete :].astype(int)
+        param_summary[list(self.param_names_discrete)] = param_summary[list(self.param_names_discrete)].astype(int)
         param_summary[self.loss_fn._score_func.__name__] = self.yl
         return param_summary
+
+    def get_best_params(self) -> dict[str, float or int]:
+        """ """
+        param_summary = self.fit_summary()
+        best_config_idx = np.argmin(self.yl)
+        return {
+            param: param_summary[param].iloc[best_config_idx]
+            for param in self.param_names_continuous + self.param_names_discrete
+        }
