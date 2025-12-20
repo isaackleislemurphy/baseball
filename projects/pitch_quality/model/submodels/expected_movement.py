@@ -11,9 +11,11 @@ import os
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, Kernel, WhiteKernel
 from sklearn.preprocessing import StandardScaler
+from tqdm import trange
 
 from baseball.data.savant.pitch.etl import load_pitch_data
 from baseball.projects.pitch_quality.data.etl import filter_to_training_data
@@ -60,7 +62,7 @@ class ExpectedMovement:
         kernel: Kernel = (
             RBF(length_scale=1e-1, length_scale_bounds=(1e-2, 1e3))
             + WhiteKernel(noise_level=1e-4, noise_level_bounds=(1e-10, 1e1))
-        ),  # Quadratic() + WhiteKernel(noise_level=1e-4),
+        ),
         random_state: int = 2026,
     ) -> None:
         """
@@ -170,12 +172,15 @@ class ExpectedMovement:
                 # fit model
                 self.fits[(pitch_type, output)].fit(X, y)
 
-    def predict(self, pred_df: pd.DataFrame) -> pd.DataFrame:
+    def _predict(self, pred_df: pd.DataFrame) -> pd.DataFrame:
         """
         Generate expected movement predictions for the provided pitch data.
 
         This method iterates through the configured pitch types, scales the input features,
-        and queries the trained Gaussian Process models to calculate expected movement.
+        and queries the trained Gaussian Process models to calculate expected movement. Note that
+        it'll predict on any size `pred_df` you give it, so it can be really slow. That's why it's
+        an internal method, and the external-facing `.predict()` automatically chunks things for memory
+        management.
 
         Parameters
         ----------
@@ -219,6 +224,19 @@ class ExpectedMovement:
 
         y_hat = pd.DataFrame(y_hat, columns=["x_" + item for item in self.outputs], index=pred_df.index)
         return pd.concat([pred_df, y_hat], axis=1)
+
+    def predict(self, pred_df: pd.DataFrame, chunk_size: int = 5_000, use_parallel: bool = False) -> pd.DataFrame:
+        """ """
+        if use_parallel:
+            _predict_df = lambda i: self._predict(pred_df.iloc[i : i + chunk_size])
+            return Parallel(n_jobs=-1, verbose=2)(
+                delayed(_predict_df)(i) for i in range(0, pred_df.shape[0], chunk_size)
+            )
+        else:
+            return pd.concat(
+                [self._predict(pred_df.iloc[i : i + chunk_size]) for i in trange(0, pred_df.shape[0], chunk_size)],
+                axis=0,
+            ).reset_index(drop=True)
 
 
 def train_expected_movement_models() -> ExpectedMovement:
