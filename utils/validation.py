@@ -2,10 +2,21 @@
 
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
-from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error, mean_squared_error, r2_score, roc_auc_score
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import (
+    accuracy_score,
+    brier_score_loss,
+    log_loss,
+    mean_absolute_error,
+    mean_squared_error,
+    r2_score,
+    roc_auc_score,
+)
+from sklearn.preprocessing import label_binarize
 
 
 def score_regression(
@@ -172,3 +183,88 @@ def score_classification(
     )
 
     return pd.DataFrame(scoring, index=["out_of_sample", "in_sample"]).T
+
+
+def plot_calibration_curve_multiclass(y_true, y_prob, n_bins=10, strategy="uniform", classes=None):
+    """
+    Plots calibration curves for binary or multiclass problems.
+
+    Parameters:
+    - y_true: True labels (1D array).
+    - y_prob: Predicted probabilities.
+              - If binary, can be 1D (prob of positive class) or 2D (N, 2).
+              - If multiclass, must be 2D (N, n_classes).
+    - n_bins: Number of bins.
+    - strategy: 'uniform' or 'quantile'.
+    - classes: List of class names (optional). If None, uses indices 0, 1, ...
+    """
+
+    y_prob = np.array(y_prob)
+    y_true = np.array(y_true)
+
+    # --- Logic to handle shapes ---
+    plot_list = []
+
+    # Case 1: 1D Array (Binary, prob of positive class)
+    if y_prob.ndim == 1:
+        plot_list = [(y_true, y_prob, "Positive Class")]
+
+    # Case 2: 2D Array
+    elif y_prob.ndim == 2:
+        n_classes = y_prob.shape[1]
+
+        # Binary (N, 2) - Standard sklearn behavior is col 0=neg, col 1=pos
+        if n_classes == 2:
+            plot_list = [(y_true, y_prob[:, 1], "Class 1")]
+
+        # Multiclass (N, >2)
+        else:
+            if classes is None:
+                classes = [f"Class {i}" for i in range(n_classes)]
+
+            # Binarize y_true for One-vs-Rest calculation
+            y_true_bin = label_binarize(y_true, classes=range(n_classes))
+
+            for i in range(n_classes):
+                # y_true_bin[:, i] is 1 if sample is class i, else 0
+                plot_list.append((y_true_bin[:, i], y_prob[:, i], classes[i]))
+
+    # --- Plotting ---
+    fig, ax = plt.subplots(2, 1, figsize=(10, 10), gridspec_kw={"height_ratios": [3, 1]}, sharex=True)
+
+    # Reference line
+    ax[0].plot([0, 1], [0, 1], linestyle="--", color="gray", label="Perfectly Calibrated", linewidth=1)
+
+    # Loop through each class configuration prepared above
+    for y_t, y_p, label in plot_list:
+
+        # 1. Calculate Calibration Curve
+        prob_true, prob_pred = calibration_curve(y_t, y_p, n_bins=n_bins, strategy=strategy)
+
+        # 2. Calculate Brier Score
+        bs = brier_score_loss(y_t, y_p)
+
+        # 3. Plot Curve
+        line_label = f"{label} (Brier: {bs:.3f})"
+        ax[0].plot(prob_pred, prob_true, marker="o", linewidth=2, label=line_label)
+
+        # 4. Plot Histogram
+        # Use 'step' style so multiple histograms don't block each other
+        ax[1].hist(y_p, range=(0, 1), bins=n_bins, density=False, histtype="step", linewidth=2, label=label, alpha=0.8)
+
+    # Formatting Top Plot
+    ax[0].set_ylabel("Fraction of Positives")
+    ax[0].set_ylim([-0.05, 1.05])
+    ax[0].legend(loc="upper left")
+    ax[0].set_title("Calibration Curves")
+    ax[0].grid(True, linestyle=":", alpha=0.6)
+
+    # Formatting Bottom Plot
+    ax[1].set_xlabel("Mean Predicted Probability")
+    ax[1].set_ylabel("Count (Log Scale)")
+    ax[1].set_yscale("log")  # Log scale helps see small classes
+    ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3)
+    ax[1].grid(True, linestyle=":", alpha=0.6)
+
+    plt.tight_layout()
+    plt.show()
