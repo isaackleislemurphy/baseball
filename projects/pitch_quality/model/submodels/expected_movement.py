@@ -18,7 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import trange
 
 from baseball.data.savant.pitch.etl import load_pitch_data
-from baseball.projects.pitch_quality.data.etl import filter_to_training_data
+from baseball.projects.pitch_quality.data.etl import partition_pitch_data
 from baseball.utils.general import load_pickled_object, write_pickled_object
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -284,7 +284,7 @@ def train_expected_movement_models() -> ExpectedMovement:
     pitch_data_df_train = load_pitch_data(load_from_cache=True)
 
     # trim it down to only training data
-    pitch_data_df_train = filter_to_training_data(pitch_data_df_train)
+    pitch_data_df_train, _, _ = partition_pitch_data(pitch_data_df_train)
 
     # instantiate xmovement models
     xmvmt_models = ExpectedMovement()
