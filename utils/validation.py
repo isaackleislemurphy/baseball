@@ -262,9 +262,7 @@ def plot_calibration_curve_multiclass(y_true, y_prob, n_bins=10, strategy="unifo
     # Formatting Bottom Plot
     ax[1].set_xlabel("Mean Predicted Probability")
     ax[1].set_ylabel("Count (Log Scale)")
-    ax[1].set_yscale("log")  # Log scale helps see small classes
-    ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=3)
+    # ax[1].set_yscale("log")  # Log scale helps see small classes
     ax[1].grid(True, linestyle=":", alpha=0.6)
 
     plt.tight_layout()
-    plt.show()
