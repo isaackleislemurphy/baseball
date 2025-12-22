@@ -73,11 +73,13 @@ def cache_training_partitions() -> None:
     # put everything together
     partition_df = pd.concat(
         [
-            pitchers_train.assign(train=1, test=0),
-            pitchers_train.assign(train=0, test=1),
+            pitchers_train.assign(training_player=1, testing_player=0),
+            pitchers_test.assign(training_player=0, testing_player=1),
         ],
         axis=0,
     ).reset_index(drop=True)
+
+    assert partition_df.groupby(["pitcher"], as_index=False)["training_player"].count()["training_player"].max() == 1
 
     # save CSV
     partition_df.to_csv(PARTITION_CSV_PATH, index=False)
