@@ -55,7 +55,7 @@ def evaluate_pitch_outcome_predictions(
     )
     print("-" * 50 + "\nModel Scoring:")
     print(scoring)
-    scoring.to_csv(os.path.join(filepath, "scoring.csv"), index=False)
+    scoring.to_csv(os.path.join(filepath, "scoring.csv"))
 
     def _savefig(filename: str) -> None:
         """ """
@@ -140,7 +140,7 @@ def train_pitch_outcome_model(
     model.fit(X_train, y_train)
 
     # make the run path: you'll save relevant objects and results in here
-    run_path = os.path.join(RUN_PATH, "pitch_outcome", "train_test_" + _format_date_for_file())
+    run_path = os.path.join(RUN_PATH, "pitch_outcome", f"{run_type}_" + _format_date_for_file())
     os.mkdir(run_path)
 
     # if you're testing, do a full on test run
@@ -169,9 +169,6 @@ def train_pitch_outcome_model(
     # save the model object
     write_pickled_object(model, os.path.join(run_path, "model.pkl"))
 
-    # save the tuning object
-    write_pickled_object(tuner, os.path.join(run_path, "tuner.pkl"))
-
     # save the input features
     write_pickled_object(mc.FEATURES, os.path.join(run_path, "features.pkl"))
 
@@ -181,6 +178,8 @@ def train_pitch_outcome_model(
 
     # save tuning results, if desired
     if tune_model:
+        # save the tuning object + summary
+        write_pickled_object(tuner, os.path.join(run_path, "tuner.pkl"))
         tuner.fit_summary().to_csv(os.path.join(run_path, "tuning.csv"), index=False)
 
 
