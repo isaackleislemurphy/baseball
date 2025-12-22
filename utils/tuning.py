@@ -10,7 +10,7 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Kernel, RationalQuadratic, WhiteKernel
-from sklearn.metrics import make_scorer, mean_absolute_error
+from sklearn.metrics import brier_score_loss, log_loss, make_scorer, mean_absolute_error
 from sklearn.model_selection import BaseCrossValidator, KFold, cross_val_score
 from tqdm import trange
 
@@ -52,8 +52,8 @@ class GPHPTuner:
     these discrete parameters in the real space, and then rounds them off at the end.
 
     TODOS:
-        [ ] `.predict_proba()` support
-        [ ] custom KFold support
+        [x] `.predict_proba()` support
+        [x] custom KFold support
 
     Attributes
     ----------
@@ -110,6 +110,7 @@ class GPHPTuner:
         loss_fn: Callable = mean_absolute_error,
         kfold: BaseCrossValidator = KFold,
         random_states: Dict = {item: None for item in _RANDOM_STATES_KEYS},
+        response_method: Optional[str] = None,
     ) -> None:
         """
         Parameters
@@ -145,9 +146,20 @@ class GPHPTuner:
         self.random_states = {
             key: None if key not in random_states.keys() else random_states[key] for key in _RANDOM_STATES_KEYS
         }
+
         # stash estimator, kfold, and loss function
         self.estimator = estimator
-        self.loss_fn = make_scorer(loss_fn)
+
+        # set up loss function. If you didn't pass a `response_method` and your `loss_fn` is likelihood or Brier, you
+        # probably want to be using `.predict_proba()`...accordingly, default to that
+        if response_method is None:
+            if loss_fn in (brier_score_loss, log_loss):
+                response_method = "predict_proba"
+            else:
+                response_method = "predict"
+        self.loss_fn = make_scorer(loss_fn, response_method=response_method)
+
+        # instantiate kfold
         self.kfold = kfold(n_splits=cv, shuffle=True, random_state=self.random_states["kfold"])
 
         # everything related to discrete params goes in here
