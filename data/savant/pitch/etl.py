@@ -297,7 +297,46 @@ def parse_missingness(data_df: pd.DataFrame) -> pd.DataFrame:
         .groupby(["bb_type"], as_index=False)["pitch_number"]
         .count(),
     )
-    data_df["xwoba"] = data_df["xwoba"].fillna(0.0)
+
+    # assign hit location = 0 hits for which there is not a `hit_location` tagged (e.g. HR or GR2B)
+    for event in ("single", "double", "triple", "home_run"):
+        data_df["hit_location"] = np.where(
+            (data_df["events"].values == event) * data_df["hit_location"].isnull().values,
+            0,
+            data_df["hit_location"].values,
+        )
+
+    # make a hit location bucket, so that imputation can be a smidge less granular
+    data_df["hit_location_bucket"] = data_df["hit_location"].replace(
+        {0: "OOTP", 1: "P", 2: "C", 3: "CIF", 4: "MIF", 5: "CIF", 6: "MIF", 7: "COF", 8: "CF", 9: "COF"}
+    )
+
+    # get average xwOBA by `events` and `hit_type_bucket` combination; we'll impute missing values using the mean within these.
+    values_by_event_and_hit_loc = (
+        data_df.query("type == 'X'")
+        .groupby(["events", "hit_location_bucket"], as_index=False)
+        .agg({"woba_value": "mean", "xwoba": "mean"})
+    )
+    # fall back on realized wOBA if we don't have any of that
+    values_by_event_and_hit_loc["xwoba"] = np.where(
+        values_by_event_and_hit_loc["xwoba"].isnull().values,
+        values_by_event_and_hit_loc["woba_value"].values,
+        values_by_event_and_hit_loc["xwoba"].values,
+    )
+    values_by_event_and_hit_loc.drop(columns=["woba_value"], inplace=True)
+
+    # join the average xwOBAs by `events` column and `hit_location_bucket` onto the original dataframe;
+    # ensure you don't lose any rows doing so.
+    dim_in = data_df.shape[0]
+    data_df = data_df.merge(
+        values_by_event_and_hit_loc, on=["hit_location_bucket", "events"], how="left", suffixes=["", "_fill"]
+    )
+    dim_out = data_df.shape[0]
+    assert dim_in == dim_out, "Merge onto `values_by_event_and_hit_loc` resulted in a loss of rows. Debug here!"
+
+    # impute with `xwoba_fill` where `xwoba` is missing
+    data_df["xwoba"] = np.where(data_df["xwoba"].isnull().values, data_df["xwoba_fill"].values, data_df["xwoba"].values)
+
     return data_df.reset_index(drop=True)
 
 
