@@ -39,6 +39,8 @@ STATCAST_RENAMINGS = {
     "p_throws": "throws",
     "game_year": "season",
     "estimated_woba_using_speedangle": "xwoba",
+    "estimated_slg_using_speedangle": "xslg",
+    "estimated_ba_using_speedangle": "xba",
 }
 
 
