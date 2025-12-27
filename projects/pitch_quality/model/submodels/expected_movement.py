@@ -327,4 +327,5 @@ def load_expected_movement_models() -> ExpectedMovement:
 
 
 if __name__ == "__main__":
+    load_pitch_data(save_to_cache=True, load_from_cache=False)
     cache_expected_movement_models()
