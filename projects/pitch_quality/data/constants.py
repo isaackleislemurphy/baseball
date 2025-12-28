@@ -11,6 +11,11 @@ CATEGORICAL_RESPONSE_INDICES = {
     "bip": 5,
 }
 
+# how many outcomes are we predicting?
+K_PITCH_OUTCOMES = len(CATEGORICAL_RESPONSE_INDICES)
+
+# column names for the log offsets
+LOG_PROB_OFFSET_COLNAMES = [f"logp_{i}" for i in range(K_PITCH_OUTCOMES)]
 
 # ---------------------------------------------------------
 # Constants for making reproducible train/test partitions
