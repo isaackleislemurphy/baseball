@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,8 +12,12 @@ from xgboost import XGBClassifier
 
 import baseball.projects.pitch_quality.model.constants as mc
 import baseball.utils.validation as val
-from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
+from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES, LOG_PROB_OFFSET_COLNAMES
 from baseball.projects.pitch_quality.data.etl import load_pitch_quality_model_data, partition_pitch_data
+from baseball.projects.pitch_quality.model.submodels.season_offsets import (
+    CategoricalLogOffsets,
+    load_categorical_log_offsets,
+)
 
 # from baseball.projects.pitch_quality.model.submodels.expected_movement import (
 #     ExpectedMovement,
@@ -43,14 +47,21 @@ def _format_date_for_file() -> str:
 
 
 def evaluate_pitch_outcome_predictions(
-    model: Any, X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray, y_test: np.ndarray, filepath: str = ""
+    model: Any,
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    bm_train: Optional[np.ndarray] = None,
+    bm_test: Optional[np.ndarray] = None,
+    filepath: str = "",
 ) -> None:
-
+    """ """
     # bare bones scoring
     scoring = val.score_classification(
-        yhat_proba_train=model.predict_proba(X_train),
+        yhat_proba_train=model.predict_proba(X_train, base_margin=bm_train),
         y_train=y_train,
-        yhat_proba_test=model.predict_proba(X_test),
+        yhat_proba_test=model.predict_proba(X_test, base_margin=bm_test),
         y_test=y_test,
     )
     print("-" * 50 + "\nModel Scoring:")
@@ -66,7 +77,7 @@ def evaluate_pitch_outcome_predictions(
         # training set calibration curve
         val.plot_calibration_curve_multiclass(
             y_true=y_train,
-            y_prob=model.predict_proba(X_train),
+            y_prob=model.predict_proba(X_train, base_margin=bm_train),
             strategy=strategy,
             classes=list(CATEGORICAL_RESPONSE_INDICES.keys()),
         )
@@ -75,7 +86,7 @@ def evaluate_pitch_outcome_predictions(
         # test set calibration curve
         val.plot_calibration_curve_multiclass(
             y_true=y_test,
-            y_prob=model.predict_proba(X_test),
+            y_prob=model.predict_proba(X_test, base_margin=bm_test),
             strategy=strategy,
             classes=list(CATEGORICAL_RESPONSE_INDICES.keys()),
         )
@@ -92,6 +103,11 @@ def train_pitch_outcome_model(
     pitch_data_df = load_pitch_quality_model_data(load_from_cache=load_from_cache).dropna(subset=mc.FEATURES)
     print("Pitch data loaded.")
 
+    # add in categorical log offsets for season / environment
+    offsets = load_categorical_log_offsets().predict(pitch_data_df)
+    pitch_data_df[LOG_PROB_OFFSET_COLNAMES] = offsets
+    print("Log offsets for season / environment loaded and added to `pitch_data_df")
+
     # TODO: fool around with this some more
     # xmvmt_models = load_expected_movement_models()
     # print("xMovement models loaded.")
@@ -101,9 +117,9 @@ def train_pitch_outcome_model(
     pitch_data_df_train, pitch_data_df_test_player, pitch_data_df_test_season = partition_pitch_data(pitch_data_df)
 
     # training design + response
-    X_train, y_train = pitch_data_df_train[mc.FEATURES].values.astype(float), pitch_data_df_train[
-        mc.CATEGORICAL_RESPONSE
-    ].values.astype(int)
+    X_train = pitch_data_df_train[mc.FEATURES].values.astype(float)
+    y_train = pitch_data_df_train[mc.CATEGORICAL_RESPONSE].values.astype(int)
+    bm_train = pitch_data_df_train[LOG_PROB_OFFSET_COLNAMES].values.astype(float)
 
     if tune_model:
         # instantiate tuning object
@@ -137,7 +153,7 @@ def train_pitch_outcome_model(
 
     # refit the model on all the in-sample data
     model = XGBClassifier(**params, random_state=33)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, base_margin=bm_train)
 
     # make the run path: you'll save relevant objects and results in here
     run_path = os.path.join(RUN_PATH, "pitch_outcome", f"{run_type}_" + _format_date_for_file())
@@ -152,19 +168,23 @@ def train_pitch_outcome_model(
             test_df = pitch_data_df_test_player if test_set == "player" else pitch_data_df_test_season
 
             # design + response matrices?
-            X_test, y_test = test_df[mc.FEATURES].values.astype(float), test_df[mc.CATEGORICAL_RESPONSE].values.astype(
-                int
-            )
+            X_test = test_df[mc.FEATURES].values.astype(float)
+            y_test = test_df[mc.CATEGORICAL_RESPONSE].values.astype(int)
+            bm_test = test_df[LOG_PROB_OFFSET_COLNAMES].values.astype(float)
 
             # make a filepath for the run
             run_path_set = os.path.join(run_path, test_set)
             os.mkdir(run_path_set)
 
             # save sscoring + diagnostics
-            evaluate_pitch_outcome_predictions(model, X_train, y_train, X_test, y_test, filepath=run_path_set)
+            evaluate_pitch_outcome_predictions(
+                model, X_train, y_train, X_test, y_test, filepath=run_path_set, bm_train=bm_train, bm_test=bm_test
+            )
     else:
         # otherwise, just score insample (twice...easier that way)
-        evaluate_pitch_outcome_predictions(model, X_train, y_train, X_train, y_train, filepath=run_path)
+        evaluate_pitch_outcome_predictions(
+            model, X_train, y_train, X_train, y_train, filepath=run_path, bm_train=bm_train, bm_test=bm_test
+        )
 
     # save the model object
     write_pickled_object(model, os.path.join(run_path, "model.pkl"))
