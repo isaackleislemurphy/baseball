@@ -24,6 +24,7 @@ Statcast-defined pitch mappings
         }
 """
 
+import itertools
 import os
 
 # O.D. 2016: https://en.wikipedia.org/wiki/2016_Major_League_Baseball_season
@@ -42,6 +43,8 @@ STATCAST_RENAMINGS = {
     "estimated_slg_using_speedangle": "xslg",
     "estimated_ba_using_speedangle": "xba",
 }
+
+COUNTS = [f"{balls}_{strikes}" for balls, strikes in itertools.product(range(4), range(3))]
 
 
 # map pitch types to pitch groupings.
