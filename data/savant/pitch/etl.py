@@ -490,6 +490,9 @@ def load_pitch_data(
     # load the raw data
     data_df = retrieve_statcast_pitch_data(date_max=date_max, date_min=date_min)
 
+    # convert movement to inches
+    data_df[["pfx_x", "pfx_z"]] *= 12.0
+
     # apply data cleaning pipeline
     data_df = (
         data_df.pipe(filter_data)
