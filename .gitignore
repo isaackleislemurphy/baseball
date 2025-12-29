@@ -1,0 +1,11 @@
+# Mac OS miscellany
+.DS_Store
+
+# pycache stuff
+__pycache__/
+
+# notebooks
+.ipynb
+
+# logs 
+.log
