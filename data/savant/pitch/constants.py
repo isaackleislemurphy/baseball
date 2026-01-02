@@ -49,7 +49,7 @@ COUNTS = [f"{balls}_{strikes}" for balls, strikes in itertools.product(range(4),
 
 # map pitch types to pitch groupings.
 FA_TYPES = "FF", "SI"
-BB_TYPES = "FC", "SL", "ST", "CU", "KC", "SC", "SV"
+BB_TYPES = "FC", "SL", "ST", "CU", "KC", "SV"
 OS_TYPES = "FS", "CH", "FO", "SC"
 PITCH_TYPES = FA_TYPES + BB_TYPES + OS_TYPES
 
@@ -86,5 +86,9 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Where the partition cache file will be saved.
 RAW_PITCH_CSV_FOLDER = "csvs"
+
 RAW_PITCH_CSV_FILENAME = "raw-pitch-df.csv"
+RAW_PITCH_PARQUET_FILENAME = "raw-pitch-df.parquet"
+
 RAW_PITCH_CSV_PATH = os.path.join(SCRIPT_DIR, RAW_PITCH_CSV_FOLDER, RAW_PITCH_CSV_FILENAME)
+RAW_PITCH_PARQUET_PATH = os.path.join(SCRIPT_DIR, RAW_PITCH_CSV_FOLDER, RAW_PITCH_PARQUET_FILENAME)
