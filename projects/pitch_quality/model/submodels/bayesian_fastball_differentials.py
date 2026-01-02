@@ -30,6 +30,8 @@ if anyone is brave enough to take this for a spin with more memory, would be a n
 to cast down a seasonal index and have a truly hierarchical (player, season, game) model.
 """
 
+import argparse
+import os
 from typing import Literal
 
 import arviz as az
@@ -47,6 +49,53 @@ FB_DIFF_COLS = ["release_speed", "release_pos_z", "pfx_x", "pfx_z"]
 DIM = len(FB_DIFF_COLS)
 FA_TYPES = ("FF", "SI")
 KEY_COLS = ["pitcher", "game_date", "game_pk", "at_bat_number", "pitch_number"]
+
+# filepath crap
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+FASTBALL_DIFF_PATH = os.path.join(SCRIPT_DIR.replace("submodels", "objects"), "fastball_differential_means")
+PLAYER_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_means_{season}.csv")
+PLAYER_GAME_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_game_means_{season}.csv")
+
+
+def parse_args() -> argparse.Namespace:
+    """
+    Parse command-line arguments for fastball shape model estimation.
+
+    This helper defines and parses the minimal set of CLI arguments required
+    to run the fastball shape model from the command line.
+
+    Arguments
+    ---------
+    --season : int
+        MLB season to fit the model on (e.g., 2023). Used to subset the pitch
+        data before model construction.
+    --model_type : {"diagonal", "mvn"}
+        Specifies the covariance structure of the hierarchical model.
+        - "diagonal": Diagonal covariance approximation. Faster and more
+          memory-efficient.
+        - "mvn": Full multivariate normal model with correlated features.
+          Statistically preferable but takes longer, particularly
+          when sampling.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed command-line arguments with attributes `season` and `model_type`.
+    """
+    parser = argparse.ArgumentParser(description="Estimate the fastball shape posterior for a given season")
+
+    parser.add_argument("--season", type=int, required=True, help="Season for fitting (e.g. 2023)")
+
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        required=True,
+        default="diagonal",
+        choices=["diagonal", "mvn"],
+        help="Which model to run: 'diagonal' or 'mvn`",
+    )
+
+    return parser.parse_args()
 
 
 def load_fastball_data(season: int) -> pd.DataFrame:
@@ -208,7 +257,7 @@ def _make_lkj_cholesky(dim: int, suffix: str = "", eta: float = 4.0) -> pt.Tenso
     return L
 
 
-def instantiate_model(pitch_data_df: pd.DataFrame, model_type: Literal["diagonal", "mvn"] = "diagonal") -> pm.Model:
+def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diagonal") -> pm.Model:
     """
     Instantiate a hierarchical PyMC model for fastball shape.
 
@@ -230,7 +279,7 @@ def instantiate_model(pitch_data_df: pd.DataFrame, model_type: Literal["diagonal
 
     Parameters
     ----------
-    pitch_data_df : pd.DataFrame
+    data : dict
         Processed pitch-level data dictionary returned by
         `load_and_process_model_data`.
     model_type : {"diagonal", "mvn"}, default "diagonal"
@@ -246,7 +295,7 @@ def instantiate_model(pitch_data_df: pd.DataFrame, model_type: Literal["diagonal
     p_idx, pitchers, P = data["p_idx"], data["pitchers"], data["P"]
     g_idx, G = data["g_idx"], data["G"]
     mask_ff, mask_si = data["mask_ff"], data["mask_si"]
-    pitch_data_df = pitch_data_df["pitch_data_df"]
+    pitch_data_df = data["pitch_data_df"]
 
     with pm.Model() as model:
 
@@ -539,23 +588,36 @@ def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.Dat
     return player_means, player_game_means
 
 
-if __name__ == "__main__":
-    season = 2025
+def main() -> None:
+    """Main function"""
+    # args
+    args = parse_args()
+    season, model_type = args.season, args.model_type
+
     # pull in data
     data = load_and_process_model_data(season=season)
+    print("Player-game FA shape data loaded")
 
     # set up model
-    model = instantiate_model(data, model_type="diagonal")
+    model = instantiate_model(data, model_type=model_type)
+    print("Player-game FA shape model instantiated")
 
     # approximate
     approx, trace = approximate_posterior(model, n=50_000)
+    print("Player-game FA shape posterior approximated.")
 
     # TODO: diagnostics in here
 
     # extract the posterior means
     player_means, player_game_means = extract_posterior_means(trace, data)
     player_means["season"] = season  # add in a season column to player means
+    print("Player-game FA shape posterior means extracted")
 
-    breakpoint()
+    # save the game means (a)
+    player_means.to_csv(PLAYER_MEANS_PATH.format(season=season), index=False)
+    player_game_means.to_csv(PLAYER_GAME_MEANS_PATH.format(season=season), index=False)
+    print(f"Game-by-game FA shapes for {season} saved.")
 
-    print("complete")
+
+if __name__ == "__main__":
+    main()
