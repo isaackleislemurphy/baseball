@@ -129,6 +129,7 @@ class ExpectedMovement:
         pd.DataFrame
             The input DataFrame with an added `xmvmt_pitch_group` column.
         """
+        pitch_data_df = pitch_data_df.copy()
         pitch_data_df["xmvmt_pitch_group"] = np.where(
             pitch_data_df["pitch_type"].isin(("FF", "SI")).values,
             pitch_data_df["pitch_type"].values,
@@ -265,10 +266,11 @@ class ExpectedMovement:
                 x_hat = np.where(np.isnan(x_hat), 0.0, x_hat)
 
                 # indices for the relevant pitch type
-                pitch_type_idx = np.where(pred_df["pitch_type"].values == pitch_type)[0]
+                pitch_type_idx = np.where(pred_df["xmvmt_pitch_group"].values == pitch_type)[0]
 
                 # predict for rows where it's the right pitch type
-                y_hat[pitch_type_idx, col] = self.fits[(pitch_type, output)].predict(x_hat[pitch_type_idx])
+                if pitch_type_idx.size > 0:
+                    y_hat[pitch_type_idx, col] = self.fits[(pitch_type, output)].predict(x_hat[pitch_type_idx])
 
         y_hat = pd.DataFrame(y_hat, columns=["x_" + item for item in self.outputs], index=pred_df.index)
         return pd.concat([pred_df, y_hat], axis=1)
