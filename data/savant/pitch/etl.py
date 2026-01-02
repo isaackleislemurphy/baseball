@@ -251,6 +251,14 @@ def engineer_x_neutral_features(data_df: pd.DataFrame) -> pd.DataFrame:
         data_df[col + "_pitcher_neutral"] = data_df[[col, "throws"]].apply(
             lambda df: df[col] if df["throws"] == "R" else -df[col], axis=1
         )
+
+    # TODO: outsource this to another function
+    data_df["spin_axis_pitcher_neutral"] = np.where(
+        data_df["throws"].values == "L", 360 - data_df["spin_axis"].values, data_df["spin_axis"].values
+    )
+    data_df["cos_spin_axis_pitcher_neutral"] = np.cos(np.deg2rad(data_df["spin_axis_pitcher_neutral"].values))
+    data_df["sin_spin_axis_pitcher_neutral"] = np.sin(np.deg2rad(data_df["spin_axis_pitcher_neutral"].values))
+
     return data_df
 
 
@@ -481,9 +489,10 @@ def load_pitch_data(
     The 'loaded_data' DataFrame will contain the cleaned, enriched, and engineered pitch data ready for analysis.
     """
     if load_from_cache:
-        print(f"Loading cached CSV from: {DATA_CONSTANTS.RAW_PITCH_CSV_PATH}")
+        print(f"Loading cached CSV from: {DATA_CONSTANTS.RAW_PITCH_PARQUET_PATH}")
         return (
-            pd.read_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH)
+            # pd.read_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH)
+            pd.read_parquet(DATA_CONSTANTS.RAW_PITCH_PARQUET_PATH)
             .query(f"game_date >= '{date_min}' & game_date <= '{date_max}'")
             .reset_index(drop=True)
         )
@@ -518,7 +527,8 @@ def load_pitch_data(
     test_data_integrity(data_df)
 
     if save_to_cache:
-        print(f"Saving cached (raw) pitches along {DATA_CONSTANTS.RAW_PITCH_CSV_PATH}")
-        data_df.to_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH, index=False)
+        print(f"Saving cached (raw) pitches along {DATA_CONSTANTS.RAW_PITCH_PARQUET_PATH}")
+        # data_df.to_csv(DATA_CONSTANTS.RAW_PITCH_CSV_PATH, index=False)
+        data_df.to_parquet(DATA_CONSTANTS.RAW_PITCH_PARQUET_PATH, index=False)
 
     return data_df
