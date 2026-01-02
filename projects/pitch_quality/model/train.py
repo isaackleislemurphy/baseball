@@ -14,15 +14,14 @@ import baseball.projects.pitch_quality.model.constants as mc
 import baseball.utils.validation as val
 from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES, LOG_PROB_OFFSET_COLNAMES
 from baseball.projects.pitch_quality.data.etl import load_pitch_quality_model_data, partition_pitch_data
+from baseball.projects.pitch_quality.model.submodels.expected_movement import (
+    ExpectedMovement,
+    load_expected_movement_models,
+)
 from baseball.projects.pitch_quality.model.submodels.season_offsets import (
     CategoricalLogOffsets,
     load_categorical_log_offsets,
 )
-
-# from baseball.projects.pitch_quality.model.submodels.expected_movement import (
-#     ExpectedMovement,
-#     load_expected_movement_models,
-# )
 from baseball.utils.general import write_pickled_object
 from baseball.utils.tuning import GPHPTuner
 
@@ -42,7 +41,17 @@ DEFAULT_PITCH_OUTCOME_PARAMS = {
 
 
 def _format_date_for_file() -> str:
-    """Nicely(ish) formats a timestamp for use as a folder"""
+    """
+    Format the current timestamp for use in filesystem paths.
+
+    Returns a compact, human-readable string with characters
+    safe for directory names, suitable for tagging model runs.
+
+    Returns
+    -------
+    str
+        Timestamp string formatted as YYYY-MM-DD_HH.MM.SS.
+    """
     return str(TODAY).split(".")[0].replace(" ", "_").replace(":", ".")
 
 
@@ -56,7 +65,37 @@ def evaluate_pitch_outcome_predictions(
     bm_test: Optional[np.ndarray] = None,
     filepath: str = "",
 ) -> None:
-    """ """
+    """
+    Evaluate and diagnose pitch outcome probability predictions.
+
+    This function computes basic classification metrics and
+    produces multiclass calibration plots for both training
+    and test sets. Results are written to disk for later review.
+
+    Parameters
+    ----------
+    model : Any
+        Trained classifier implementing `predict_proba`.
+    X_train : numpy.ndarray
+        Training design matrix.
+    y_train : numpy.ndarray
+        Training categorical outcomes.
+    X_test : numpy.ndarray
+        Test design matrix.
+    y_test : numpy.ndarray
+        Test categorical outcomes.
+    bm_train : numpy.ndarray, optional
+        Base-margin offsets for training observations (log-probabilities).
+    bm_test : numpy.ndarray, optional
+        Base-margin offsets for test observations (log-probabilities).
+    filepath : str
+        Directory where evaluation artifacts will be saved.
+
+    Returns
+    -------
+    None
+        Metrics and plots are written to disk.
+    """
     # bare bones scoring
     scoring = val.score_classification(
         yhat_proba_train=model.predict_proba(X_train, base_margin=bm_train),
@@ -69,7 +108,14 @@ def evaluate_pitch_outcome_predictions(
     scoring.to_csv(os.path.join(filepath, "scoring.csv"))
 
     def _savefig(filename: str) -> None:
-        """ """
+        """
+        Save the current matplotlib figure and clear the canvas.
+
+        Parameters
+        ----------
+        filename : str
+            Name of the file to save within `filepath`.
+        """
         plt.savefig(os.path.join(filepath, filename))
         plt.clf()
 
@@ -98,7 +144,38 @@ def train_pitch_outcome_model(
     tune_model: bool = True,
     load_from_cache: bool = True,
 ) -> None:
-    """ """
+    """
+    Train and evaluate a pitch outcome classification model.
+
+    This function fits a multiclass gradient-boosted tree model
+    to predict pitch-level outcomes (e.g., strike, ball, whiff),
+    optionally incorporating season-level log-probability offsets
+    and hyperparameter tuning via Bayesian optimization.
+
+    The workflow includes:
+    - Loading and preprocessing pitch-level data.
+    - Adding categorical log offsets for season/environment effects.
+    - Optional hyperparameter tuning using grouped cross-validation.
+    - Model training with base-margin offsets.
+    - In-sample and/or out-of-sample evaluation.
+    - Persistence of model artifacts and diagnostics.
+
+    Parameters
+    ----------
+    run_type : {"train", "train_test"}
+        Whether to evaluate only in-sample ("train") or
+        perform full out-of-sample testing by player and season.
+    tune_model : bool, default True
+        If True, perform hyperparameter tuning before final training.
+        If False, use preselected default parameters.
+    load_from_cache : bool, default True
+        Whether to load cached pitch-level data.
+
+    Returns
+    -------
+    None
+        Trained model and evaluation artifacts are saved to disk.
+    """
     # pull in the data...presumption is you've cached it before
     pitch_data_df = load_pitch_quality_model_data(load_from_cache=load_from_cache).dropna(subset=mc.FEATURES)
     print("Pitch data loaded.")
@@ -109,9 +186,9 @@ def train_pitch_outcome_model(
     print("Log offsets for season / environment loaded and added to `pitch_data_df")
 
     # TODO: fool around with this some more
-    # xmvmt_models = load_expected_movement_models()
-    # print("xMovement models loaded.")
-    # pitch_data_df = xmvmt_models.predict(pitch_data_df)
+    xmvmt_models = load_expected_movement_models()
+    print("xMovement models loaded.")
+    # pitch_data_df = xmvmt_models.predict(pitch_data_df, use_parallel=False)
     # print("xMovemented predicted.")
 
     pitch_data_df_train, pitch_data_df_test_player, pitch_data_df_test_season = partition_pitch_data(pitch_data_df)
