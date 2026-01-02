@@ -15,11 +15,14 @@ Two model variants are supported:
 2. A full multivariate normal (MVN) version with correlated features, which
    is statistically more appropriate but substantially more expensive.
 
-The diagonal model and the use of variational inference are deliberate
-engineering compromises to allow fitting on a local laptop. They are not
-claimed to be theoretically optimal, only practical. However, I left in toggles
-so that if you ever decide to run this code with more juice, you'll be
-able to do the more rigorous model and estimation.
+The diagonal model and the use of variational inference are (i) deliberate
+engineering compromises to allow fitting on a local laptop and (ii) more defensible
+on the grounds that only the posterior means -- plain old point estimates -- will be
+fed into the pitch quality model. These approximations/shortcuts are not claimed to be
+theoretically optimal, only practical. And if I ever end up trying to take advantage of the
+full probibilistic distribution, rather than mere point estimates, I know I'll have to find
+a way to sample. Nonetheless, I left in toggles so that if you ever decide to run this code
+with more juice, you'll be able to do the more rigorous model and estimation.
 
 To that end, I'm also fitting the models within season, when clearly the more
 rigorous thing would be to add season as a hierarchy. Again, purely a memory play...
@@ -115,7 +118,7 @@ def index_games_by_pitcher(pitch_data_df: pd.DataFrame) -> pd.DataFrame:
     return game_index_df
 
 
-def load_and_process_model_data() -> pd.DataFrame:
+def load_and_process_model_data(season: int) -> pd.DataFrame:
     """
     Load, clean, and index data for hierarchical fastball modeling.
 
@@ -124,6 +127,12 @@ def load_and_process_model_data() -> pd.DataFrame:
     - Pitcher indices
     - Game indices
     - Boolean masks for pitch type routing (FF vs SI)
+
+    Parameters
+    ----------
+    season : int
+        Season on which to fit data. Again, this should be hierarchically treated,
+        but modeling within season to save on memory. See note above.
 
     Returns
     -------
@@ -140,7 +149,7 @@ def load_and_process_model_data() -> pd.DataFrame:
         - `mask_si`: boolean mask for sinkers
     """
     # pull in the pitches
-    pitch_data_df = load_fastball_data()
+    pitch_data_df = load_fastball_data(season=season)
 
     # index the games
     game_index_df = index_games_by_pitcher(pitch_data_df)
@@ -532,7 +541,21 @@ def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.Dat
 
 if __name__ == "__main__":
     season = 2025
+    # pull in data
     data = load_and_process_model_data(season=season)
+
+    # set up model
     model = instantiate_model(data, model_type="diagonal")
+
+    # approximate
     approx, trace = approximate_posterior(model, n=50_000)
+
+    # TODO: diagnostics in here
+
+    # extract the posterior means
     player_means, player_game_means = extract_posterior_means(trace, data)
+    player_means["season"] = season  # add in a season column to player means
+
+    breakpoint()
+
+    print("complete")
