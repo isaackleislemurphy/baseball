@@ -3,7 +3,7 @@
 import pandas as pd
 
 from baseball.constants import SHOHEI_OHTANI
-from baseball.data.savant.pitch.etl import load_pitch_data
+from baseball.data.savant.pitch.load import load_pitch_data
 from baseball.projects.pitch_quality.data.cache_training_partitions import load_training_partitions
 from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.projects.pitch_quality.model.constants import TRAIN_TEST_CUTOFF_DATE
@@ -73,9 +73,7 @@ def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
     return playing_totals
 
 
-def load_pitch_quality_model_data(
-    date_min: str = "2020-01-01", date_max: str = "2025-12-01", **kwargs: dict
-) -> pd.DataFrame:
+def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = "2025-12-01") -> pd.DataFrame:
     """
     Load pitch data and filter for valid pitcher-vs-batter matchups.
 
@@ -91,8 +89,6 @@ def load_pitch_quality_model_data(
         The start date for data retrieval (YYYY-MM-DD).
     date_max : str, default "2025-08-01"
         The end date for data retrieval (YYYY-MM-DD).
-    **kwargs : dict
-        Keyword arguments for `load_pitch_data()`
 
     Returns
     -------
@@ -101,7 +97,7 @@ def load_pitch_quality_model_data(
         batter are deemed "likely" occupants of their respective roles.
     """
     # load the pitch-level data
-    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max, **kwargs)
+    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max)
 
     # make the categorical response index
     pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(
@@ -144,7 +140,8 @@ def partition_pitch_data(pitch_data_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.
     tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
         A tuple containing three DataFrames:
         1. **Training Set:** Training pitchers (training_player == 1) in games on or before `TRAIN_TEST_CUTOFF_DATE`.
-        2. **Test Identity Set:** All rows for pitchers designated as test subjects (training_player == 0), regardless of date.
+        2. **Test Identity Set:** All rows for pitchers designated as test subjects (training_player == 0),
+            regardless of date.
         3. **Future Set:** All rows for games occurring after `TRAIN_TEST_CUTOFF_DATE`, regardless of pitcher identity.
 
     Notes
