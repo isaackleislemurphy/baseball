@@ -119,7 +119,7 @@ def cache_categorical_log_offsets() -> None:
     Fit and persist the categorical log-offset model to disk.
     """
     offsets = CategoricalLogOffsets()
-    offsets.fit(load_from_cache=True)
+    offsets.fit()
     write_pickled_object(offsets, CATEGORICAL_LOG_OFFSET_OBJECT_PATH)
 
 

@@ -17,7 +17,7 @@ from sklearn.gaussian_process.kernels import RBF, Kernel, WhiteKernel
 from sklearn.preprocessing import StandardScaler
 from tqdm import trange
 
-from baseball.data.savant.pitch.etl import load_pitch_data
+from baseball.data.savant.pitch.load import load_pitch_data
 from baseball.projects.pitch_quality.data.etl import partition_pitch_data
 from baseball.utils.general import load_pickled_object, write_pickled_object
 
@@ -327,7 +327,7 @@ def train_expected_movement_models() -> ExpectedMovement:
     """
 
     # load pitch data
-    pitch_data_df_train = load_pitch_data(load_from_cache=True)
+    pitch_data_df_train = load_pitch_data()
 
     # trim it down to only training data
     pitch_data_df_train, _, _ = partition_pitch_data(pitch_data_df_train)
