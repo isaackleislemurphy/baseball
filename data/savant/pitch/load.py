@@ -15,13 +15,13 @@ INVALID_PITCH_FILTER = f"""
         p.description not in {DATA_CONSTANTS.INVALID_PITCH_DESCRIPTIONS} AND
         -- no bunts
         p.is_bunt_attempt = 0 AND
-        p.events <> 'sac_bunt' AND
+        (p.events <> 'sac_bunt' OR p.events IS NULL) AND
         -- no catcher's interferences
-        p.events <> 'catcher_interf'
+        (p.events <> 'catcher_interf' OR p.events IS NULL)
 """
 
 
-def query_pitches(date_min: str = "2020-01-01", date_max: str = "2025-12-31") -> pd.DataFrame:
+def load_pitch_data(date_min: str = "2020-01-01", date_max: str = "2025-12-31") -> pd.DataFrame:
     """
     Query cleaned, feature-engineered Statcast pitch-level data from DuckDB-backed parquet files.
 
@@ -165,6 +165,12 @@ def query_pitches(date_min: str = "2020-01-01", date_max: str = "2025-12-31") ->
         p.game_date <= '{date_max}' AND
         {INVALID_PITCH_FILTER}
 
+    ORDER BY
+        p.game_date,
+        p.game_pk,
+        p.pitcher,
+        p.at_bat_number,
+        p.pitch_number
     """
     df = query(sql)
     return df
