@@ -10,6 +10,22 @@ from baseball.data.savant.pitch.utils import get_season_savant_duckdb_filepath
 
 TODAY = datetime.now().date()
 
+# these are strictly Hawkeye features, so they'll be
+# nulled out pre-2020. If the mass nulls for 2017-2019
+# aren't explicitly casted to floats, then DuckDB may
+# initialize the columns as ints, which'll bork further
+# analysis. So these need to be casted explicitly to floats,
+# particularly for parquets where the entire season will be
+# null in these fields.
+HAWKEYE_FLOAT_OVERRIDES = [
+    "arm_angle",
+    "bat_speed",
+    "swing_length",
+    "attack_angle",
+    "attack_direction",
+    "swing_path_tilt",
+]
+
 
 def pull_raw_savant_pitch_data(
     date_max: str = str(TODAY), date_min: str = DATA_CONSTANTS.MIN_STATCAST_DATE
@@ -209,7 +225,14 @@ def cache_raw_pitch_data_byseason(season: int) -> None:
     - Intended to be run once per season.
     - Downstream models should never hit Savant directly.
     """
+    # pull in the data
     data_raw = extract_raw_pitch_data_byseason(season=season)
+
+    # for pre-HE seasons, ensure mass nulls don't accidentally get tagged as ints and
+    # mislead DuckDB down the line
+    data_raw[HAWKEYE_FLOAT_OVERRIDES] = data_raw[HAWKEYE_FLOAT_OVERRIDES].astype(float)
+
+    # save to parquet
     data_raw.to_parquet(
         get_season_savant_duckdb_filepath(season),
         index=False,
