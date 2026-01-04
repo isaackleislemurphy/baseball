@@ -83,6 +83,11 @@ INVALID_PITCH_DESCRIPTIONS = ("intent_ball", "unknown_strike")
 
 # where are we
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SAVANT_DUCK_DB_PARQUET_PATH = os.path.join(SCRIPT_DIR, "db")
+SAVANT_DUCK_DB_PARQUET_FILENAME = "raw_savant_pitch_data_{season}.parquet"
+
+
+# TODO: deprecatet these
 
 # Where the partition cache file will be saved.
 RAW_PITCH_CSV_FOLDER = "csvs"
