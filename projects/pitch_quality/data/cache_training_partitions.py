@@ -15,7 +15,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import KBinsDiscretizer
 
-from baseball.data.savant.pitch.etl import load_pitch_data
+from baseball.data.savant.pitch.load import load_pitch_data
 from baseball.projects.pitch_quality.data.constants import (
     NUM_ARM_ANGLE_STRATIFICATION_BINS,
     PARTITION_CSV_PATH,
@@ -83,6 +83,8 @@ def cache_training_partitions() -> None:
 
     # save CSV
     partition_df.to_csv(PARTITION_CSV_PATH, index=False)
+
+    print(f"Train/test partitions saved along: `{PARTITION_CSV_PATH}`")
 
 
 def load_training_partitions() -> pd.DataFrame:
