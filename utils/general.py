@@ -7,6 +7,39 @@ from typing import Any
 import pandas as pd
 
 
+def str2bool(x: Any) -> bool:
+    """
+    Converts a string or other common types to a boolean.
+
+    Parameters
+    ----------
+    x : Any
+        The input value to convert. Supported types are bool, int, float, and str.
+
+    Returns
+    -------
+    bool
+        The boolean representation of the input.
+
+    Raises
+    ------
+    ValueError
+        If the input type is not supported.
+    """
+    if isinstance(x, bool):
+        return x
+
+    elif isinstance(x, (int, float)):
+        return x > 0
+    elif isinstance(x, str):
+        try:
+            return float(x) > 0
+        except ValueError:
+            return x.lower() in ("t", "true", "y", "yes")
+    else:
+        raise ValueError("Huh, never seen that one before")
+
+
 def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0.25) -> Any:
     """Gets a cut date for train/test partitioning purposes.
 
