@@ -82,8 +82,8 @@ INVALID_PITCH_DESCRIPTIONS = ("intent_ball", "unknown_strike")
 
 
 # where are we
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SAVANT_DUCK_DB_PARQUET_PATH = os.path.join(SCRIPT_DIR, "db")
+DIR_PATH = os.environ.get("PYTHONPATH")
+SAVANT_DUCK_DB_PARQUET_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "pitch", "savant")
 SAVANT_DUCK_DB_PARQUET_FILENAME = "raw_savant_pitch_data_{season}.parquet"
 
 
@@ -95,5 +95,5 @@ RAW_PITCH_CSV_FOLDER = "csvs"
 RAW_PITCH_CSV_FILENAME = "raw-pitch-df.csv"
 RAW_PITCH_PARQUET_FILENAME = "raw-pitch-df.parquet"
 
-RAW_PITCH_CSV_PATH = os.path.join(SCRIPT_DIR, RAW_PITCH_CSV_FOLDER, RAW_PITCH_CSV_FILENAME)
-RAW_PITCH_PARQUET_PATH = os.path.join(SCRIPT_DIR, RAW_PITCH_CSV_FOLDER, RAW_PITCH_PARQUET_FILENAME)
+RAW_PITCH_CSV_PATH = os.path.join(DIR_PATH, RAW_PITCH_CSV_FOLDER, RAW_PITCH_CSV_FILENAME)
+RAW_PITCH_PARQUET_PATH = os.path.join(DIR_PATH, RAW_PITCH_CSV_FOLDER, RAW_PITCH_PARQUET_FILENAME)
