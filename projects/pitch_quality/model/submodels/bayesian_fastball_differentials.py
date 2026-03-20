@@ -35,7 +35,8 @@ import os
 from typing import Literal
 
 import arviz as az
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pymc as pm
@@ -51,10 +52,12 @@ FA_TYPES = ("FF", "SI")
 KEY_COLS = ["pitcher", "game_date", "game_pk", "at_bat_number", "pitch_number"]
 
 # filepath crap
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-FASTBALL_DIFF_PATH = os.path.join(SCRIPT_DIR.replace("submodels", "objects"), "fastball_differential_means")
-PLAYER_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_means_{season}.csv")
-PLAYER_GAME_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_game_means_{season}.csv")
+DIR_PATH = os.environ.get("PYTHONPATH")
+FASTBALL_DIFF_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "model_outputs", "smoothed_fastball_shapes")
+PLAYER_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season", "smoothed_player_means_{season}.parquet")
+PLAYER_GAME_MEANS_PATH = os.path.join(
+    FASTBALL_DIFF_PATH, "player_season_game", "smoothed_player_game_means_{season}.parquet"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -89,7 +92,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model_type",
         type=str,
-        required=True,
         default="diagonal",
         choices=["diagonal", "mvn"],
         help="Which model to run: 'diagonal' or 'mvn`",
@@ -116,14 +118,14 @@ def load_fastball_data(season: int) -> pd.DataFrame:
         - A numeric fastball-type index (`fa_idx`)
         - Rows with missing fastball feature values removed
     """
-    # pitch_data_df = load_pitch_quality_model_data(load_from_cache=True)
-    # pitch_data_df = pitch_data_df.loc[pitch_data_df["pitch_type"].isin(FA_TYPES)]
-    # pitch_data_df.to_parquet("/Users/isaac/Downloads/fa.parquet", index=False)
 
+    # pull in all the pitches
+    pitch_data_df = load_pitch_quality_model_data(date_min=f"{season}-01-01", date_max=f"{season}-12-31")
+
+    # whittle it down to fastballs
     pitch_data_df = (
-        pd.read_parquet("/Users/isaac/Downloads/fa.parquet")
+        pitch_data_df.loc[pitch_data_df["pitch_type"].isin(FA_TYPES)]
         .query("pitcher in (605400, 554430, 689147, 656046, 666200, 621381, 621383, 694973)")
-        .query(f"season == {season}")
         .reset_index(drop=True)
     )
 
@@ -292,7 +294,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
     """
 
     # unpack the data
-    p_idx, pitchers, P = data["p_idx"], data["pitchers"], data["P"]
+    p_idx, _, P = data["p_idx"], data["pitchers"], data["P"]
     g_idx, G = data["g_idx"], data["G"]
     mask_ff, mask_si = data["mask_ff"], data["mask_si"]
     pitch_data_df = data["pitch_data_df"]
@@ -566,26 +568,26 @@ def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.Dat
     _wide_cols = _add_suffix(FB_DIFF_COLS, "_FF") + _add_suffix(FB_DIFF_COLS, "_SI")
 
     # dataframe of seasonal player posterior means...return this.
-    player_means = pd.DataFrame(mu_p_samples.mean(0) * sigma_y + mu_y, columns=_wide_cols).assign(pitcher=pitchers)[
-        ["pitcher"] + _wide_cols
-    ]
-    player_game_means = mu_pg_samples.mean(0)
+    smoothed_player_means = pd.DataFrame(mu_p_samples.mean(0) * sigma_y + mu_y, columns=_wide_cols).assign(
+        pitcher=pitchers
+    )[["pitcher"] + _wide_cols]
+    smoothed_player_game_means = mu_pg_samples.mean(0)
 
     # dataframe of player-game posterior means...return this
-    player_game_means = pd.concat(
+    smoothed_player_game_means = pd.concat(
         [
             pd.DataFrame(item * sigma_y + mu_y, columns=_wide_cols)
             .assign(pitcher=pitchers[i], game_idx=np.arange(item.shape[0]))
             .merge(data["game_index_df"], on=["pitcher", "game_idx"])
-            for i, item in enumerate(player_game_means)
+            for i, item in enumerate(smoothed_player_game_means)
         ],
         axis=0,
     ).reset_index(drop=True)
-    player_game_means = player_game_means[
-        [item for item in player_game_means.columns if item not in _wide_cols] + _wide_cols
+    smoothed_player_game_means = smoothed_player_game_means[
+        [item for item in smoothed_player_game_means.columns if item not in _wide_cols] + _wide_cols
     ]
 
-    return player_means, player_game_means
+    return smoothed_player_means, smoothed_player_game_means
 
 
 def main() -> None:
@@ -609,13 +611,13 @@ def main() -> None:
     # TODO: diagnostics in here
 
     # extract the posterior means
-    player_means, player_game_means = extract_posterior_means(trace, data)
-    player_means["season"] = season  # add in a season column to player means
+    smoothed_player_means, smoothed_player_game_means = extract_posterior_means(trace, data)
+    smoothed_player_means["season"] = season  # add in a season column to player means
     print("Player-game FA shape posterior means extracted")
 
     # save the game means (a)
-    player_means.to_csv(PLAYER_MEANS_PATH.format(season=season), index=False)
-    player_game_means.to_csv(PLAYER_GAME_MEANS_PATH.format(season=season), index=False)
+    smoothed_player_means.to_parquet(PLAYER_MEANS_PATH.format(season=season), index=False)
+    smoothed_player_game_means.to_parquet(PLAYER_GAME_MEANS_PATH.format(season=season), index=False)
     print(f"Game-by-game FA shapes for {season} saved.")
 
 
