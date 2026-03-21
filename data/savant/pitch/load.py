@@ -21,7 +21,9 @@ INVALID_PITCH_FILTER = f"""
 """
 
 
-def load_pitch_data(date_min: str = "2020-01-01", date_max: str = "2025-12-31") -> pd.DataFrame:
+def load_pitch_data(
+    date_min: str = "2020-01-01", date_max: str = "2025-12-31", addl_where_clause: str = ""
+) -> pd.DataFrame:
     """
     Query cleaned, feature-engineered Statcast pitch-level data from DuckDB-backed parquet files.
 
@@ -38,6 +40,9 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = "2025-12-31") 
         Intended to support partial-season or rolling-window queries.
     date_max : str, default "2025-12-31"
         Inclusive upper bound on `game_date` for pitches returned.
+    addl_where_clause : str, default = ""
+        Additional SQL to include in your filtering, to save on memory etc.
+        User expected to have  familiarity with this function and does so at their own risk.
 
     Returns
     -------
@@ -164,6 +169,7 @@ def load_pitch_data(date_min: str = "2020-01-01", date_max: str = "2025-12-31") 
     WHERE p.game_date >= '{date_min}' AND
         p.game_date <= '{date_max}' AND
         {INVALID_PITCH_FILTER}
+        {addl_where_clause}
 
     ORDER BY
         p.game_date,
