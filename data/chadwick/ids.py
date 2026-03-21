@@ -121,9 +121,22 @@ def load_chadwick_ids() -> pd.DataFrame:
 
 
 def get_bam_id_from_name(full_name: str) -> int:
-    """ """
+    """
+    Gets a player's MLBAM ID from their full name, e.g. "Rhys Hoskins" gives you 656555.
+
+    Parameters
+    ----------
+    full_name : str
+        The full name of the player, e.g. "Rhys Hoskins"
+
+    Returns
+    -------
+    bam_id : int
+        That player's MLBAM ID, e.g. 656555
+    """
     # parse the name
     name_first, name_last = full_name.split(" ")
+
     # extract the corresponding BAM ID. TODO: error-handling here
     bam_id = (
         load_chadwick_ids()
