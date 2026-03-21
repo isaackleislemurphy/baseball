@@ -41,8 +41,10 @@ import numpy as np
 import pandas as pd
 import pymc as pm
 import pytensor.tensor as pt
+from xarray import DataArray
 
 from baseball.projects.pitch_quality.data.etl import load_pitch_quality_model_data
+from baseball.utils.general import str2bool
 
 print(f"Running on PyMC v{pm.__version__}")
 
@@ -58,6 +60,9 @@ PLAYER_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season", "smoothed_
 PLAYER_GAME_MEANS_PATH = os.path.join(
     FASTBALL_DIFF_PATH, "player_season_game", "smoothed_player_game_means_{season}.parquet"
 )
+
+# test pitchers: nola, wheeler, kerkering, hoff, zeus, strahm, banks, skenes, fairbanks
+TEST_SUBSET_PITCHERS = (605400, 554430, 689147, 656046, 666200, 621381, 621383, 694973, 664126)
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,6 +84,9 @@ def parse_args() -> argparse.Namespace:
         - "mvn": Full multivariate normal model with correlated features.
           Statistically preferable but takes longer, particularly
           when sampling.
+    --use_test_subset : bool
+        If True, restricts fit/sampling to a smal subset of pitchers. Helpful when tinkering
+        with the model or debugging. The default is false.
 
     Returns
     -------
@@ -97,10 +105,17 @@ def parse_args() -> argparse.Namespace:
         help="Which model to run: 'diagonal' or 'mvn`",
     )
 
+    parser.add_argument(
+        "--use_test_subset",
+        type=str2bool,
+        default=False,
+        help="If True, will restrict fit/sampling to a small subset of pitchers. Probably False.",
+    )
+
     return parser.parse_args()
 
 
-def load_fastball_data(season: int) -> pd.DataFrame:
+def load_fastball_data(season: int, use_test_subset: bool = False) -> pd.DataFrame:
     """
     Load and minimally clean fastball pitch-level data.
 
@@ -109,6 +124,9 @@ def load_fastball_data(season: int) -> pd.DataFrame:
     season : int
         Season on which to fit data. Again, this should be hierarchically treated,
         but modeling within season to save on memory. See note above.
+    use_test_subset : bool, default=False
+        If True, whittles dataset down to the predetermined pitchers in `TEST_SUBSET`.
+        You should ever only use this when iterating/debugging.
 
     Returns
     -------
@@ -122,12 +140,12 @@ def load_fastball_data(season: int) -> pd.DataFrame:
     # pull in all the pitches
     pitch_data_df = load_pitch_quality_model_data(date_min=f"{season}-01-01", date_max=f"{season}-12-31")
 
+    if use_test_subset:
+        print("WARNING—test subset in use for smoothed FA shapes")
+        pitch_data_df = pitch_data_df.query(f"pitcher in {TEST_SUBSET_PITCHERS}")
+
     # whittle it down to fastballs
-    pitch_data_df = (
-        pitch_data_df.loc[pitch_data_df["pitch_type"].isin(FA_TYPES)]
-        .query("pitcher in (605400, 554430, 689147, 656046, 666200, 621381, 621383, 694973)")
-        .reset_index(drop=True)
-    )
+    pitch_data_df = pitch_data_df.loc[pitch_data_df["pitch_type"].isin(FA_TYPES)].reset_index(drop=True)
 
     # index fastballs
     pitch_data_df["fa_idx"] = pitch_data_df["pitch_type"].replace({item: i for i, item in enumerate(FA_TYPES)})
@@ -169,7 +187,7 @@ def index_games_by_pitcher(pitch_data_df: pd.DataFrame) -> pd.DataFrame:
     return game_index_df
 
 
-def load_and_process_model_data(season: int) -> pd.DataFrame:
+def load_and_process_model_data(season: int, **kwargs: dict) -> pd.DataFrame:
     """
     Load, clean, and index data for hierarchical fastball modeling.
 
@@ -184,6 +202,9 @@ def load_and_process_model_data(season: int) -> pd.DataFrame:
     season : int
         Season on which to fit data. Again, this should be hierarchically treated,
         but modeling within season to save on memory. See note above.
+
+    **kwargs: dict
+        Keyword args for `load_fastball_data()`
 
     Returns
     -------
@@ -200,7 +221,7 @@ def load_and_process_model_data(season: int) -> pd.DataFrame:
         - `mask_si`: boolean mask for sinkers
     """
     # pull in the pitches
-    pitch_data_df = load_fastball_data(season=season)
+    pitch_data_df = load_fastball_data(season=season, **kwargs)
 
     # index the games
     game_index_df = index_games_by_pitcher(pitch_data_df)
@@ -354,11 +375,12 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             # --------------------------------------------------------
 
             # Game-over-game variation for each feature
-            sigma_pg = pm.Exponential("sigma_pg", 1.0, shape=(1, 1, DIM * 2))
+            sigma_z_pg = pm.Exponential("sigma_pg", 1, shape=(1, 1, DIM * 2), initval=1e-2 * np.ones((1, 1, DIM * 2)))
 
-            # mu_pg[p, g, :] is how pitcher p deviates in game g from their
+            # eta_pg[p, g, :] is how pitcher p deviates in game g from their
             # baseline in mu_p[p, :]
-            mu_pg = pm.Normal("mu_pg", 0, sigma_pg, shape=(P, G, DIM * 2))
+            z_pg = pm.Normal("z_pg", 0, sigma_z_pg, shape=(P, G, DIM * 2))
+            eta_pg = z_pg.cumsum(axis=1)
 
             # --------------------------------------------------------
             # Likelihood: four-seam fastballs
@@ -373,7 +395,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             # + pitcher-game FF deviation
             _ = pm.Normal(
                 "lkhd_ff",
-                alpha[:, :DIM] + mu_p[p_idx[mask_ff], :DIM] + mu_pg[p_idx[mask_ff], g_idx[mask_ff], :DIM],
+                alpha[:, :DIM] + mu_p[p_idx[mask_ff], :DIM] + eta_pg[p_idx[mask_ff], g_idx[mask_ff], :DIM],
                 sigma_ff,
                 observed=Y_[mask_ff],
             )
@@ -388,7 +410,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             # Same structure as FF, but using SI block
             _ = pm.Normal(
                 "lkhd_si",
-                alpha[:, DIM:] + mu_p[p_idx[mask_si], DIM:] + mu_pg[p_idx[mask_si], g_idx[mask_si], DIM:],
+                alpha[:, DIM:] + mu_p[p_idx[mask_si], DIM:] + eta_pg[p_idx[mask_si], g_idx[mask_si], DIM:],
                 sigma_si,
                 observed=Y_[mask_si],
             )
@@ -411,14 +433,14 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             mu_p = pm.math.dot(L_p, Z_p.T).T
 
             # --------------------------------------------------------
-            # Player–game effects: mu_pg ~ MVN(0, Sigma_pg)
+            # Player–game effects: eta_pg ~ MVN(0, Sigma_pg)
             # --------------------------------------------------------
 
             # Cholesky factor for game-level covariance. Again, non-
             # centered parameterization
             L_pg = _make_lkj_cholesky(dim=DIM * 2, eta=4.0, suffix="_pg")
             Z_pg = pm.Normal("Z_pg", 0, 1, size=(P, G, DIM * 2))
-            mu_pg = pm.math.dot(Z_pg, L_pg.T)
+            eta_pg = pm.math.dot(Z_pg, L_pg.T)
 
             # --------------------------------------------------------
             # MVN likelihood: four-seam fastballs
@@ -429,7 +451,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
 
             _ = pm.MvNormal(
                 "lkhd_ff",
-                alpha[:, :DIM] + mu_p[p_idx[mask_ff], :DIM] + mu_pg[p_idx[mask_ff], g_idx[mask_ff], :DIM],
+                alpha[:, :DIM] + mu_p[p_idx[mask_ff], :DIM] + eta_pg[p_idx[mask_ff], g_idx[mask_ff], :DIM],
                 chol=L_ff,
                 observed=Y_[mask_ff],
             )
@@ -443,7 +465,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
 
             _ = pm.MvNormal(
                 "lkhd_si",
-                alpha[:, DIM:] + mu_p[p_idx[mask_si], DIM:] + mu_pg[p_idx[mask_si], g_idx[mask_si], DIM:],
+                alpha[:, DIM:] + mu_p[p_idx[mask_si], DIM:] + eta_pg[p_idx[mask_si], g_idx[mask_si], DIM:],
                 chol=L_si,
                 observed=Y_[mask_si],
             )
@@ -527,6 +549,25 @@ def approximate_posterior(
     return approx, trace
 
 
+def _extract_samples(x: DataArray) -> np.ndarray:
+    """
+    Extracts and stacks samples from a PyMC trace across chains.
+
+    Parameters
+    ----------
+    x : DataArray
+        Input data array containing MCMC samples, typically with
+        dimensions (chains, draws, ...).
+
+    Returns
+    -------
+    numpy.ndarray
+        Stacked array with chains concatenated along the first axis,
+        resulting in shape (chains * draws, ...).
+    """
+    return np.concatenate(x.values)
+
+
 def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Extract posterior mean estimates for pitcher and pitcher-game effects.
@@ -551,11 +592,11 @@ def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.Dat
     """
     # extract posterior samples of seasonal player means:
     # (draws, 1, DIM * 2) + (draws, P, DIM * 2) --> (draws, P, DIM * 2)
-    mu_p_samples = trace.posterior.alpha.values[0] + trace.posterior.mu_p.values[0]
+    mu_p_samples = _extract_samples(trace.posterior.alpha) + _extract_samples(trace.posterior.mu_p)
 
     # extract posterior samples of player game means:
     # (draws, P, 1, DIM * 2) + (draws, P, G, DIM * 2)--> (draws, P, G, DIM * 2)
-    mu_pg_samples = mu_p_samples[:, :, None, :] + trace.posterior.mu_pg.values[0]
+    eta_pg_samples = mu_p_samples[:, :, None, :] + _extract_samples(trace.posterior.z_pg).cumsum(axis=2)
 
     # extract scaling parameters, to unscale
     sigma_y = trace.constant_data.sigma_Y.values.repeat(2, 0).flatten()[None, :]
@@ -571,7 +612,7 @@ def extract_posterior_means(trace: az.InferenceData, data: dict) -> tuple[pd.Dat
     smoothed_player_means = pd.DataFrame(mu_p_samples.mean(0) * sigma_y + mu_y, columns=_wide_cols).assign(
         pitcher=pitchers
     )[["pitcher"] + _wide_cols]
-    smoothed_player_game_means = mu_pg_samples.mean(0)
+    smoothed_player_game_means = eta_pg_samples.mean(0)
 
     # dataframe of player-game posterior means...return this
     smoothed_player_game_means = pd.concat(
@@ -594,10 +635,10 @@ def main() -> None:
     """Main function"""
     # args
     args = parse_args()
-    season, model_type = args.season, args.model_type
+    season, model_type, use_test_subset = args.season, args.model_type, args.use_test_subset
 
     # pull in data
-    data = load_and_process_model_data(season=season)
+    data = load_and_process_model_data(season=season, use_test_subset=use_test_subset)
     print("Player-game FA shape data loaded")
 
     # set up model
