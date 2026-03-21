@@ -71,7 +71,17 @@ def load_raw_chadwick_people_csvs() -> pd.DataFrame:
 
 
 def cache_chadwick_ids() -> None:
-    """ """
+    """
+    Fetches Chadwick player IDs using pybaseball, cleans the data, and caches it locally.
+
+    This function retrieves the Chadwick register, removes accent marks from the
+    players' first and last names (via unidecode) to facilitate easier text matching,
+    and saves the resulting DataFrame to a local Parquet file.
+
+    Returns
+    -------
+    None
+    """
     # load the IDs and names
     id_df = chadwick_register()
 
@@ -84,7 +94,14 @@ def cache_chadwick_ids() -> None:
 
 
 def load_chadwick_ids_query() -> str:
-    """ """
+    """
+    Generates the DuckDB SQL query needed to load the cached Chadwick IDs.
+
+    Returns
+    -------
+    str
+        A SQL query string selecting all records from the cached Parquet file.
+    """
     return f"""
     SELECT * FROM
     '{CHADWICK_ID_PARQUET}'
@@ -92,8 +109,29 @@ def load_chadwick_ids_query() -> str:
 
 
 def load_chadwick_ids() -> pd.DataFrame:
-    """ """
+    """
+    Executes the DuckDB query to load the cached Chadwick player IDs into memory.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame containing the locally cached Chadwick player IDs and names.
+    """
     return query(load_chadwick_ids_query())
+
+
+def get_bam_id_from_name(full_name: str) -> int:
+    """ """
+    # parse the name
+    name_first, name_last = full_name.split(" ")
+    # extract the corresponding BAM ID. TODO: error-handling here
+    bam_id = (
+        load_chadwick_ids()
+        .sort_values(["name_first", "name_last", "mlb_played_last"], ascending=False)
+        .query(f"name_last == '{name_last}' & name_first == '{name_first}'")
+        .key_mlbam.iloc[0]
+    )
+    return bam_id
 
 
 if __name__ == "__main__":
