@@ -5,10 +5,20 @@ mapping.
 CSVs live here: https://github.com/chadwickbureau/register/tree/master/data
 """
 
+import os
 import string
 import urllib
 
 import pandas as pd
+from pybaseball import chadwick_register
+from unidecode import unidecode
+
+from baseball.utils.duckdb import query
+
+DIR_PATH = os.environ.get("PYTHONPATH")
+CHADWICK_ID_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "chadwick", "ids")
+CHADWICK_ID_PARQUET = os.path.join(CHADWICK_ID_PATH, "chadwick_ids.parquet")
+
 
 CHADWICK_PEOPLE_CSV_LINK = (
     "https://raw.githubusercontent.com/chadwickbureau/register/refs/heads/master/data/people-{i}.csv"
@@ -58,3 +68,33 @@ def load_raw_chadwick_people_csvs() -> pd.DataFrame:
     id_df["key_mlbam"] = id_df["key_mlbam"].values.astype(int)
 
     return id_df
+
+
+def cache_chadwick_ids() -> None:
+    """ """
+    # load the IDs and names
+    id_df = chadwick_register()
+
+    # strip out accent marks from names to make lookups easier
+    for col in ("name_last", "name_first"):
+        id_df[col] = [unidecode(item) if isinstance(item, str) else item for item in id_df[col]]
+
+    # save it to the "database"
+    id_df.to_parquet(os.path.join(CHADWICK_ID_PARQUET))
+
+
+def load_chadwick_ids_query() -> str:
+    """ """
+    return f"""
+    SELECT * FROM
+    '{CHADWICK_ID_PARQUET}'
+    """
+
+
+def load_chadwick_ids() -> pd.DataFrame:
+    """ """
+    return query(load_chadwick_ids_query())
+
+
+if __name__ == "__main__":
+    cache_chadwick_ids()
