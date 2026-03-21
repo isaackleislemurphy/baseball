@@ -9,12 +9,13 @@ import pandas as pd
 
 def str2bool(x: Any) -> bool:
     """
-    Converts a string or other common types to a boolean.
+    Converts a value to its boolean equivalent.
 
     Parameters
     ----------
     x : Any
-        The input value to convert. Supported types are bool, int, float, and str.
+        The input value to convert. Expected types are bool, int, float, or
+        a string representing a truth value.
 
     Returns
     -------
@@ -24,20 +25,25 @@ def str2bool(x: Any) -> bool:
     Raises
     ------
     ValueError
-        If the input type is not supported.
+        If the string cannot be parsed or the type is unsupported.
     """
     if isinstance(x, bool):
         return x
 
-    elif isinstance(x, (int, float)):
+    if isinstance(x, (int, float)):
         return x > 0
-    elif isinstance(x, str):
-        try:
-            return float(x) > 0
-        except ValueError:
-            return x.lower() in ("t", "true", "y", "yes")
-    else:
-        raise ValueError("Huh, never seen that one before")
+
+    if isinstance(x, str):
+        # Strip whitespace and standardize case for safer matching
+        x_clean = x.strip().lower()
+
+        if x_clean in {"t", "true", "y", "yes", "on", "1"}:
+            return True
+        elif x_clean in {"f", "false", "n", "no", "off", "0"}:
+            return False
+
+    # A more descriptive error message helps with debugging logs
+    raise ValueError(f"Input to `str2bool()` makes no sense; cannot convert {type(x).__name__} {x!r} to bool.")
 
 
 def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0.25) -> Any:
