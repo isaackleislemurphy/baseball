@@ -5,7 +5,7 @@ import pandas as pd
 
 from baseball.duckdb.tables import TABLES
 from baseball.projects.strategery.constants import (
-    GAME_STATES,
+    GAME_STATES_FULL,
     MAX_RUNS_PER_INNING,
     RE24_DUCK_DB_PARQUET_PATH,
     RUNS_ARRAY,
@@ -13,7 +13,7 @@ from baseball.projects.strategery.constants import (
 from baseball.utils.duckdb import query
 
 TRANSITION_STATES = [
-    "_".join((x, str(y))) for x, y in (itertools.product(GAME_STATES, np.arange(0, MAX_RUNS_PER_INNING + 1)))
+    "_".join((x, str(y))) for x, y in (itertools.product(GAME_STATES_FULL, np.arange(0, MAX_RUNS_PER_INNING + 1)))
 ]
 
 
@@ -226,7 +226,7 @@ def make_transition_matrix(empirical_transition_probs: pd.DataFrame) -> pd.DataF
         P.loc["---:3_" + str(runs), "---:3_" + str(runs)] = 1.0
 
     # whenever you've reached `MAX_RUNS_PER_INNING`, next transition is automatically to terminal state
-    for game_state in GAME_STATES:
+    for game_state in GAME_STATES_FULL:
         P.loc[game_state + "_" + str(MAX_RUNS_PER_INNING), "---:3_" + str(MAX_RUNS_PER_INNING)] = 1.0
 
     # make sure row stochastic
@@ -283,7 +283,7 @@ def calculate_re24_from_transition_matrix(P: pd.DataFrame) -> pd.DataFrame:
     B_df = pd.DataFrame(B, index=transient_states, columns=absorbing_states)
 
     # slice down to the 24 base/out states at 0 runs scored
-    re24_states = [item + "_0" for item in GAME_STATES if item != "---:3"]
+    re24_states = [item + "_0" for item in GAME_STATES_FULL if item != "---:3"]
     re24 = B_df.loc[re24_states].copy()
 
     # name the columns by the runs scored (p_0 through p_<MAX_RUNS_PER_INNING>)
@@ -299,7 +299,7 @@ def calculate_re24_from_transition_matrix(P: pd.DataFrame) -> pd.DataFrame:
     return re24
 
 
-def calculate_re24() -> pd.DataFrame:
+def calculate_re24(group_half_innings: bool = True) -> pd.DataFrame:
     """
     Execute the full pipeline to calculate the RE24 (Run Expectancy) matrix.
 
@@ -312,10 +312,21 @@ def calculate_re24() -> pd.DataFrame:
     pd.DataFrame
         The final RE24 matrix with base/out states and expected runs.
     """
+
+    def _do_calcs(shifted_pa_df: pd.DataFrame) -> pd.DataFrame:
+        empirical_transition_probs = calculate_empirical_transition_probs(shifted_pa_df)
+        P = make_transition_matrix(empirical_transition_probs)
+        re24 = calculate_re24_from_transition_matrix(P)
+        return re24
+
     shifted_pa_df = load_pa_data().pipe(widen_pa_data).query("(inning < 9) | (inning == 9 & inning_topbot == 'Top')")
-    empirical_transition_probs = calculate_empirical_transition_probs(shifted_pa_df)
-    P = make_transition_matrix(empirical_transition_probs)
-    re24 = calculate_re24_from_transition_matrix(P)
+    if group_half_innings:
+        re24 = pd.concat(
+            [_do_calcs(df).assign(inning_topbot=inn_tb) for (inn_tb,), df in shifted_pa_df.groupby(["inning_topbot"])],
+            axis=0,
+        ).reset_index(drop=True)
+    else:
+        re24 = _do_calcs(shifted_pa_df)
     return re24
 
 
