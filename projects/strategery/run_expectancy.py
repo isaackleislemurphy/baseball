@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from baseball.data.savant.pitch.constants import SAVANT_DUCK_DB_PARQUET_PATH
-from baseball.projects.strategery.constants import GAME_STATES, MAX_RUNS_PER_INNING, RE24_PATH, RUNS_ARRAY
+from baseball.projects.strategery.constants import GAME_STATES, MAX_RUNS_PER_INNING, RE24_PARQUET_PATH, RUNS_ARRAY
 from baseball.utils.duckdb import query
 
 TRANSITION_STATES = [
@@ -316,9 +316,9 @@ def calculate_re24() -> pd.DataFrame:
 
 
 def calculate_and_save_re24() -> None:
-    """ """
+    """Calculates the RE24 values and saves them to the duckdb folderpath"""
     re24 = calculate_re24()
-    re24.to_parquet(os.path.join(RE24_PATH, "re24.parquet"))
+    re24.to_parquet(os.path.join(RE24_PARQUET_PATH, "re24.parquet"))
 
 
 if __name__ == "__main__":
