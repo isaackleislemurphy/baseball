@@ -48,7 +48,7 @@ from baseball.utils.general import str2bool
 
 print(f"Running on PyMC v{pm.__version__}")
 
-FB_DIFF_COLS = ["release_speed", "release_pos_z", "pfx_x", "pfx_z"]
+FB_DIFF_COLS = ["release_speed", "release_pos_z", "pfx_x", "pfx_z", "arm_angle"]
 DIM = len(FB_DIFF_COLS)
 FA_TYPES = ("FF", "SI")
 KEY_COLS = ["pitcher", "game_date", "game_pk", "at_bat_number", "pitch_number"]
@@ -429,8 +429,8 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             # parameterization here.
 
             L_p = _make_lkj_cholesky(dim=DIM * 2, eta=4.0, suffix="_p")
-            Z_p = pm.Normal("Z_p", 0, 1, size=(P, DIM * 2))
-            mu_p = pm.math.dot(L_p, Z_p.T).T
+            Z_p = pm.Normal("z_p", 0, 1, size=(P, DIM * 2))
+            mu_p = pm.Deterministic("mu_p", pm.math.dot(L_p, Z_p.T).T)
 
             # --------------------------------------------------------
             # Player–game effects: eta_pg ~ MVN(0, Sigma_pg)
@@ -439,7 +439,7 @@ def instantiate_model(data: dict, model_type: Literal["diagonal", "mvn"] = "diag
             # Cholesky factor for game-level covariance. Again, non-
             # centered parameterization
             L_pg = _make_lkj_cholesky(dim=DIM * 2, eta=4.0, suffix="_pg")
-            Z_pg = pm.Normal("Z_pg", 0, 1, size=(P, G, DIM * 2))
+            Z_pg = pm.Normal("z_pg", 0, 1, size=(P, G, DIM * 2))
             eta_pg = pm.math.dot(Z_pg, L_pg.T)
 
             # --------------------------------------------------------
