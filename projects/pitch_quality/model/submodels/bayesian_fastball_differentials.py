@@ -58,15 +58,22 @@ DIR_PATH = os.environ.get("PYTHONPATH")
 # player-season means and player-season-game means will live in this general folder
 FASTBALL_DIFF_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "model_outputs", "smoothed_fa_shapes")
 
+# ---------------------- #
+# DUCK DB PATHS
+# -----------------------#
 # this will be the general database for player-season fastball shapes
 SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season")
+# same deal, but for the player-season-game means
+SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season_game")
+
+
+# ---------------------- #
+# DUCK DB FULL FILENAMES
+# -----------------------#
 # specific filename for those files (one for each season)
 SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_FILENAME = os.path.join(
     SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH, "smoothed_player_means_{season}.parquet"
 )
-
-# same deal, but for the player-season-game means
-SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season_game")
 SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_FILENAME = os.path.join(
     SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH, "smoothed_player_game_means_{season}.parquet"
 )
