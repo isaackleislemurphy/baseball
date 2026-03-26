@@ -16,8 +16,8 @@ from unidecode import unidecode
 from baseball.utils.duckdb import query
 
 DIR_PATH = os.environ.get("PYTHONPATH")
-CHADWICK_ID_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "chadwick", "ids")
-CHADWICK_ID_PARQUET = os.path.join(CHADWICK_ID_PATH, "chadwick_ids.parquet")
+CHADWICK_DUCK_DB_PARQUET_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "chadwick", "ids")
+CHADWICK_ID_PARQUET = os.path.join(CHADWICK_DUCK_DB_PARQUET_PATH, "chadwick_ids.parquet")
 
 
 CHADWICK_PEOPLE_CSV_LINK = (
