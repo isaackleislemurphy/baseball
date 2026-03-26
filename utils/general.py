@@ -43,7 +43,7 @@ def str2bool(x: Any) -> bool:
             return False
 
     # A more descriptive error message helps with debugging logs
-    raise ValueError(f"Input to `str2bool()` makes no sense; cannot convert {type(x).__name__} {x!r} to bool.")
+    raise ValueError(f"Input to `str2bool()` makes no sense; cannot {type(x).__name__} {x!r} to bool.")
 
 
 def get_train_test_cut_date(df: pd.DataFrame, date_col: str, pct_test: float = 0.25) -> Any:
