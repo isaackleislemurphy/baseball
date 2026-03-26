@@ -35,5 +35,5 @@ GAME_STATES = [
 RUNS_ARRAY = np.arange(MAX_RUNS_PER_INNING + 1)
 
 DB_PATH = os.path.join(os.environ.get("PYTHONPATH"), "baseball", "duckdb", "strategery")
-RE24_PATH = os.path.join(DB_PATH, "re24")
-PE288_PATH = os.path.join(DB_PATH, "pe288")
+RE24_PARQUET_PATH = os.path.join(DB_PATH, "re24")
+PE288_PARQUET_PATH = os.path.join(DB_PATH, "pe288")
