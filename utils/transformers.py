@@ -1,10 +1,125 @@
 """ """
 
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 from scipy.stats import norm
-from sklearn.preprocessing import QuantileTransformer
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import QuantileTransformer, StandardScaler
+
+
+class GroupedStandardScaler(BaseEstimator, TransformerMixin):
+    """
+    Applies StandardScaler independently to subsets of the data based on group labels.
+
+    This transformer behaves like `sklearn.preprocessing.StandardScaler`, but instead
+    of standardizing the entire dataset globally, it fits a separate scaler for each
+    unique group provided in the `groups` array.
+
+    Parameters
+    ----------
+    **scaler_kwargs : dict
+        Keyword arguments passed directly to the underlying `sklearn.preprocessing.StandardScaler`
+        (e.g., `with_mean=True`, `with_std=False`).
+
+    Attributes
+    ----------
+    scalers_ : dict
+        A dictionary mapping each unique group label to its fitted `StandardScaler` instance.
+    """
+
+    def __init__(self, **scaler_kwargs: Any) -> None:
+        self.scaler_kwargs: Dict[str, Any] = scaler_kwargs
+        self.scalers_: Dict[Any, StandardScaler] = {}
+
+    def fit(self, X: np.ndarray, groups: np.ndarray) -> "GroupedStandardScaler":
+        """
+        Fits a separate StandardScaler for each unique group.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data used to compute the per-group mean and standard deviation.
+        groups : array-like of shape (n_samples,)
+            An array of group labels corresponding to each sample in `X`.
+
+        Returns
+        -------
+        self : GroupedStandardScaler
+            The fitted estimator.
+        """
+        X_arr = np.asarray(X)
+        groups_arr = np.asarray(groups)
+
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(-1, 1)
+
+        self.scalers_ = {}
+        unique_groups = np.unique(groups_arr)
+
+        for group in unique_groups:
+            mask = groups_arr == group
+            scaler = StandardScaler(**self.scaler_kwargs)
+            scaler.fit(X_arr[mask])
+            self.scalers_[group] = scaler
+
+        return self
+
+    def transform(self, X: np.ndarray, groups: np.ndarray) -> np.ndarray:
+        """
+        Transforms the data using the fitted scaler for each corresponding group.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data to be standardized.
+        groups : array-like of shape (n_samples,)
+            An array of group labels corresponding to each sample in `X`.
+
+        Returns
+        -------
+        X_transformed : ndarray of shape (n_samples, n_features)
+            The standardized data.
+
+        Raises
+        ------
+        ValueError
+            If a group label in `groups` was not encountered during the `fit` step.
+        """
+        X_arr = np.asarray(X)
+        groups_arr = np.asarray(groups)
+
+        if X_arr.ndim == 1:
+            X_arr = X_arr.reshape(-1, 1)
+
+        X_transformed = np.empty_like(X_arr, dtype=float)
+
+        for group in np.unique(groups_arr):
+            mask = groups_arr == group
+            if group not in self.scalers_:
+                raise ValueError(f"Group '{group}' was not seen during fit().")
+
+            X_transformed[mask] = self.scalers_[group].transform(X_arr[mask])
+
+        return X_transformed
+
+    def fit_transform(self, X: np.ndarray, groups: np.ndarray) -> np.ndarray:
+        """
+        Fits the scalers to the groups and transforms the data in a single step.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            The data to be standardized.
+        groups : array-like of shape (n_samples,)
+            An array of group labels corresponding to each sample in `X`.
+
+        Returns
+        -------
+        X_transformed : ndarray of shape (n_samples, n_features)
+            The standardized data.
+        """
+        return self.fit(X, groups).transform(X, groups)
 
 
 class RankGaussianTransformer:
