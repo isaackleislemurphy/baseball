@@ -1,11 +1,15 @@
 import itertools
-import os
 
 import numpy as np
 import pandas as pd
 
-from baseball.data.savant.pitch.constants import SAVANT_DUCK_DB_PARQUET_PATH
-from baseball.projects.strategery.constants import GAME_STATES, MAX_RUNS_PER_INNING, RE24_PARQUET_PATH, RUNS_ARRAY
+from baseball.duckdb.tables import TABLES
+from baseball.projects.strategery.constants import (
+    GAME_STATES,
+    MAX_RUNS_PER_INNING,
+    RE24_DUCK_DB_PARQUET_PATH,
+    RUNS_ARRAY,
+)
 from baseball.utils.duckdb import query
 
 TRANSITION_STATES = [
@@ -34,7 +38,7 @@ def load_pa_data() -> pd.DataFrame:
             game_pk,
             at_bat_number,
             MIN(pitch_number) pitch_number,
-        FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet'
+        FROM '{TABLES.pitch.savant}'
         GROUP BY
             game_pk,
             at_bat_number
@@ -44,7 +48,7 @@ def load_pa_data() -> pd.DataFrame:
             game_pk,
             at_bat_number,
             MAX(pitch_number) pitch_number,
-        FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet'
+        FROM '{TABLES.pitch.savant}'
         GROUP BY
             game_pk,
             at_bat_number
@@ -57,7 +61,7 @@ def load_pa_data() -> pd.DataFrame:
             p.events,
             p.description,
             p.des
-        FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet' p
+        FROM '{TABLES.pitch.savant}' p
         JOIN last_pitch AS lp USING(game_pk, at_bat_number, pitch_number)
     )
     SELECT
@@ -89,7 +93,7 @@ def load_pa_data() -> pd.DataFrame:
         pa.des AS description_full
 
 
-    FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet' p
+    FROM '{TABLES.pitch.savant}' p
     JOIN first_pitch fp USING(game_pk, at_bat_number, pitch_number)
     JOIN pa ON
         p.game_pk = pa.game_pk AND
@@ -318,7 +322,7 @@ def calculate_re24() -> pd.DataFrame:
 def calculate_and_save_re24() -> None:
     """Calculates the RE24 values and saves them to the duckdb folderpath"""
     re24 = calculate_re24()
-    re24.to_parquet(os.path.join(RE24_PARQUET_PATH, "re24.parquet"))
+    re24.to_parquet(RE24_DUCK_DB_PARQUET_PATH)
 
 
 if __name__ == "__main__":
