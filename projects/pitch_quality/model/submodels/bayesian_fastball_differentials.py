@@ -55,10 +55,20 @@ KEY_COLS = ["pitcher", "game_date", "game_pk", "at_bat_number", "pitch_number"]
 
 # filepath crap
 DIR_PATH = os.environ.get("PYTHONPATH")
-FASTBALL_DIFF_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "model_outputs", "smoothed_fastball_shapes")
-PLAYER_MEANS_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season", "smoothed_player_means_{season}.parquet")
-PLAYER_GAME_MEANS_PATH = os.path.join(
-    FASTBALL_DIFF_PATH, "player_season_game", "smoothed_player_game_means_{season}.parquet"
+# player-season means and player-season-game means will live in this general folder
+FASTBALL_DIFF_PATH = os.path.join(DIR_PATH, "baseball", "duckdb", "model_outputs", "smoothed_fa_shapes")
+
+# this will be the general database for player-season fastball shapes
+SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season")
+# specific filename for those files (one for each season)
+SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_FILENAME = os.path.join(
+    SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH, "smoothed_player_means_{season}.parquet"
+)
+
+# same deal, but for the player-season-game means
+SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH = os.path.join(FASTBALL_DIFF_PATH, "player_season_game")
+SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_FILENAME = os.path.join(
+    SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH, "smoothed_player_game_means_{season}.parquet"
 )
 
 # test pitchers: nola, wheeler, kerkering, hoff, zeus, strahm, banks, skenes, fairbanks
@@ -657,8 +667,8 @@ def main() -> None:
     print("Player-game FA shape posterior means extracted")
 
     # save the game means (a)
-    smoothed_player_means.to_parquet(PLAYER_MEANS_PATH.format(season=season), index=False)
-    smoothed_player_game_means.to_parquet(PLAYER_GAME_MEANS_PATH.format(season=season), index=False)
+    smoothed_player_means.to_parquet(SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH.format(season=season), index=False)
+    smoothed_player_game_means.to_parquet(SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH.format(season=season), index=False)
     print(f"Game-by-game FA shapes for {season} saved.")
 
 
