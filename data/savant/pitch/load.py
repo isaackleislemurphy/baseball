@@ -1,7 +1,7 @@
 import pandas as pd
 
 import baseball.data.savant.pitch.constants as DATA_CONSTANTS
-from baseball.data.savant.pitch.constants import SAVANT_DUCK_DB_PARQUET_PATH
+from baseball.duckdb.tables import TABLES
 from baseball.utils.duckdb import query
 
 INVALID_PITCH_FILTER = f"""
@@ -74,7 +74,7 @@ def load_pitch_data(
             AVG(xwoba) xwoba,
             AVG(woba_value) woba_value,
             COUNT(*) AS num_hit_type_obs
-        FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet' p
+        FROM '{TABLES.savant.pitch}' p
         WHERE {INVALID_PITCH_FILTER} AND
             pitch_outcome_category = 'bip'
         GROUP BY
@@ -160,7 +160,7 @@ def load_pitch_data(
         xwf.xwoba AS xwoba_fill,
         p.woba_value
 
-    FROM '{SAVANT_DUCK_DB_PARQUET_PATH}/*.parquet' p
+    FROM '{TABLES.savant.pitch}' p
 
     LEFT JOIN xwoba_impute xwf ON
         IF(p.pitch_outcome_category = 'bip' AND p.bb_type IS NULL, 'not_recorded', p.bb_type) = xwf.bb_type AND
