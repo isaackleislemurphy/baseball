@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from baseball.data.chadwick.constants import CHADWICK_DUCK_DB_PARQUET_PATH
 from baseball.data.savant.pitch.constants import SAVANT_DUCK_DB_PARQUET_PATH
-from baseball.projects.pitch_quality.model.submodels.bayesian_fastball_differentials import (
+from baseball.projects.pitch_quality.model.submodels.bayesian_fastball_differentials.constants import (
     SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH,
     SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH,
 )
