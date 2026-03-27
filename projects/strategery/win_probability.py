@@ -9,6 +9,7 @@ from baseball.duckdb.tables import TABLES
 from baseball.projects.strategery.constants import (
     GAME_STATES,
     RUNS_ARRAY,
+    WIN_PROB_DUCK_DB_PARQUET_PATH,
 )
 from baseball.utils.duckdb import query
 
@@ -172,8 +173,21 @@ def calculate_start_of_extras_home_win_probs(p_runs: dict[tuple[int, str], td.Ca
     return p_home_win_this_inn / (1 - p_another_inn)
 
 
-if __name__ == "__main__":
+def calculate_and_save_win_probs() -> None:
+    """
+    Simulates and saves win probabilities. Note that this sits downstream of the `strategery.re24` table,
+    so it only be as fresh as that table.
+    """
     re24 = get_re24_values()
+    print("RE24 loaded")
     p_runs = make_run_probability_dists(re24)
+    print("Run scoring distributions initialized")
     hm_win_prob_t10 = calculate_start_of_extras_home_win_probs(p_runs)
     wp_results = calculate_regular_home_win_probs(p_runs, hm_win_prob_t10)
+    print("Simulations complete")
+    wp_results.to_parquet(WIN_PROB_DUCK_DB_PARQUET_PATH)
+    print(f"Results saved to `{WIN_PROB_DUCK_DB_PARQUET_PATH}`")
+
+
+if __name__ == "__main__":
+    calculate_and_save_win_probs()
