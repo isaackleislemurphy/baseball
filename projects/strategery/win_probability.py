@@ -177,5 +177,3 @@ if __name__ == "__main__":
     p_runs = make_run_probability_dists(re24)
     hm_win_prob_t10 = calculate_start_of_extras_home_win_probs(p_runs)
     wp_results = calculate_regular_home_win_probs(p_runs, hm_win_prob_t10)
-    breakpoint()
-    print("complete")
