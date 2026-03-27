@@ -74,7 +74,7 @@ def load_pitch_data(
             AVG(xwoba) xwoba,
             AVG(woba_value) woba_value,
             COUNT(*) AS num_hit_type_obs
-        FROM '{TABLES.savant.pitch}' p
+        FROM '{TABLES.pitch.savant}' p
         WHERE {INVALID_PITCH_FILTER} AND
             pitch_outcome_category = 'bip'
         GROUP BY
@@ -160,7 +160,7 @@ def load_pitch_data(
         xwf.xwoba AS xwoba_fill,
         p.woba_value
 
-    FROM '{TABLES.savant.pitch}' p
+    FROM '{TABLES.pitch.savant}' p
 
     LEFT JOIN xwoba_impute xwf ON
         IF(p.pitch_outcome_category = 'bip' AND p.bb_type IS NULL, 'not_recorded', p.bb_type) = xwf.bb_type AND
