@@ -314,6 +314,7 @@ def calculate_re24(group_half_innings: bool = True) -> pd.DataFrame:
     """
 
     def _do_calcs(shifted_pa_df: pd.DataFrame) -> pd.DataFrame:
+        """Does the RE24 calculation grunt work"""
         empirical_transition_probs = calculate_empirical_transition_probs(shifted_pa_df)
         P = make_transition_matrix(empirical_transition_probs)
         re24 = calculate_re24_from_transition_matrix(P)
@@ -324,16 +325,19 @@ def calculate_re24(group_half_innings: bool = True) -> pd.DataFrame:
         re24 = pd.concat(
             [_do_calcs(df).assign(inning_topbot=inn_tb) for (inn_tb,), df in shifted_pa_df.groupby(["inning_topbot"])],
             axis=0,
-        ).reset_index(drop=True)
+        ).reset_index(drop=True)[["game_state", "inning_topbot", "run_exp"] + ["p_" + str(item) for item in RUNS_ARRAY]]
     else:
         re24 = _do_calcs(shifted_pa_df)
+
     return re24
 
 
 def calculate_and_save_re24() -> None:
     """Calculates the RE24 values and saves them to the duckdb folderpath"""
     re24 = calculate_re24()
+    print("RE24 values calculated")
     re24.to_parquet(RE24_DUCK_DB_PARQUET_PATH)
+    print("RE24 values saved to:", RE24_DUCK_DB_PARQUET_PATH)
 
 
 if __name__ == "__main__":
