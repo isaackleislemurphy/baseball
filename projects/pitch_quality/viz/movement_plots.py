@@ -324,9 +324,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Make a pitch movement plot for your favorite pitcher")
 
     parser.add_argument(
-        "--pitcher",
+        "pitcher",
         type=str,
-        required=True,
         help="Name of the pitcher for whom you want a plot, e.g. 'Caleb Cotham' or 'Cesar Ramos'",
     )
 
