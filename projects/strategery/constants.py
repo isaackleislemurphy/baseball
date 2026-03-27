@@ -30,8 +30,8 @@ GAME_STATES = [
     "123:0",
     "123:1",
     "123:2",
-    "---:3",
 ]
+GAME_STATES_FULL = GAME_STATES + ["---:3"]
 RUNS_ARRAY = np.arange(MAX_RUNS_PER_INNING + 1)
 
 DB_PATH = os.path.join(os.environ.get("PYTHONPATH"), "baseball", "duckdb", "strategery")
