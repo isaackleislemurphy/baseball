@@ -7,7 +7,11 @@ from baseball.projects.pitch_quality.model.submodels.bayesian_fastball_different
     SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH,
     SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH,
 )
-from baseball.projects.strategery.constants import PE288_DUCK_DB_PARQUET_PATH, RE24_DUCK_DB_PARQUET_PATH
+from baseball.projects.strategery.constants import (
+    PE288_DUCK_DB_PARQUET_PATH,
+    RE24_DUCK_DB_PARQUET_PATH,
+    WIN_PROB_DUCK_DB_PARQUET_PATH,
+)
 
 # setting it u
 SCHEMA = dict(
@@ -28,6 +32,7 @@ SCHEMA = dict(
     strategery=dict(
         re24=RE24_DUCK_DB_PARQUET_PATH,
         pe288=PE288_DUCK_DB_PARQUET_PATH,
+        win_probability=WIN_PROB_DUCK_DB_PARQUET_PATH,
     ),
     # ---------------------------------- #
     # pitch quasi-namespace
