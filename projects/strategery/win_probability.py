@@ -83,30 +83,39 @@ def calculate_regular_home_win_probs(
     n_home_leads = len(HOME_LEADS)
 
     # loop over game state, inning, and half inning (run differentials vectorized)
-    for game_state, inning, half_inning in tqdm(itertools.product(GAME_STATES, range(1, 10), (0, 1))):
+    for game_state, inning, half_inning in tqdm(itertools.product(GAME_STATES, range(1, 11), (0, 1))):
         # simulate rest of inning runs
         roi_runs = p_runs[(half_inning, game_state)].sample((n_home_leads, N_SIMS))
 
-        # how many (regular) innings will the home team bat? Note the min/max trick here to avoid unwieldy
-        # if/else statements—if there are no innings left to play, we take a trivial sample of shape
-        # (1, n_home_leads, N_SIMS) so that `.sample()` doesn't break, but we promptly zero it out with
-        # `min(hm_inn_rog, 1)`. In-line way of creating zeros.
-        hm_inn_rog = 10 - inning - half_inning
-        hm_runs = p_runs[(1, "---:0")].sample((max(hm_inn_rog, 1), n_home_leads, N_SIMS)).sum(axis=0) * min(
-            hm_inn_rog, 1
-        )
+        # 1.) REGULAR INNINGS
+        if inning < 10:
+            # how many (regular) innings will the home team bat? Note the min/max trick here to avoid unwieldy
+            # if/else statements—if there are no innings left to play, we take a trivial sample of shape
+            # (1, n_home_leads, N_SIMS) so that `.sample()` doesn't break, but we promptly zero it out with
+            # `min(hm_inn_rog, 1)`. In-line way of creating zeros.
+            hm_inn_rog = 10 - inning - half_inning
+            hm_runs = p_runs[(1, "---:0")].sample((max(hm_inn_rog, 1), n_home_leads, N_SIMS)).sum(axis=0) * min(
+                hm_inn_rog, 1
+            )
 
-        # how many (regular) innings will the opposing team bat (excl. this one)
-        rd_inn_rog = 9 - inning
-        rd_runs = p_runs[(0, "---:0")].sample((max(rd_inn_rog, 1), n_home_leads, N_SIMS)).sum(axis=0) * min(
-            rd_inn_rog, 1
-        )
+            # how many (regular) innings will the opposing team bat (excl. this one)
+            rd_inn_rog = 9 - inning
+            rd_runs = p_runs[(0, "---:0")].sample((max(rd_inn_rog, 1), n_home_leads, N_SIMS)).sum(axis=0) * min(
+                rd_inn_rog, 1
+            )
+            # tally combine roi + rog runs
+            if half_inning == 0:
+                rd_runs += roi_runs
+            else:
+                hm_runs += roi_runs
 
-        # tally combine roi + rog runs
-        if half_inning == 0:
-            rd_runs += roi_runs
+        # 2.) EXTRA INNINGS
         else:
-            hm_runs += roi_runs
+            # figure out how much home team scored; use ROI if bottom-half, otherwise draw from zombie-runner
+            hm_runs = roi_runs if half_inning else p_runs[(1, "-2-:0")].sample((n_home_leads, N_SIMS))
+            # if it's bottom, road team scored "0" for the inning that we've already conditioned on;
+            # if it's top, use the roi runs
+            rd_runs = torch.zeros_like(hm_runs) if half_inning else roi_runs
 
         # add on (vectorized) home leads
         hm_runs += HOME_LEADS[:, None]
@@ -168,3 +177,5 @@ if __name__ == "__main__":
     p_runs = make_run_probability_dists(re24)
     hm_win_prob_t10 = calculate_start_of_extras_home_win_probs(p_runs)
     wp_results = calculate_regular_home_win_probs(p_runs, hm_win_prob_t10)
+    breakpoint()
+    print("complete")
