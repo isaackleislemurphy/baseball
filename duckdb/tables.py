@@ -7,6 +7,7 @@ from baseball.projects.pitch_quality.model.submodels.bayesian_fastball_different
     SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH,
     SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH,
 )
+from baseball.projects.pitch_quality.model.submodels.expected_movement.constants import XMVMT_DUCK_DB_PARQUET_PATH
 from baseball.projects.strategery.constants import (
     PE288_DUCK_DB_PARQUET_PATH,
     RE24_DUCK_DB_PARQUET_PATH,
@@ -25,6 +26,7 @@ SCHEMA = dict(
     model_outputs=dict(
         smoothed_fastball_shapes_player_season=SMOOTHED_FA_PLAYER_MEANS_DUCK_DB_PATH,
         smoothed_fastball_shapes_player_season_game=SMOOTHED_FA_PLAYER_GAME_MEANS_DUCK_DB_PATH,
+        expected_fastball_movement=XMVMT_DUCK_DB_PARQUET_PATH,
     ),
     # ---------------------------------- #
     # strategery quasi-namespace
