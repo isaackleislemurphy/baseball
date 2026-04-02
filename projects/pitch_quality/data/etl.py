@@ -3,10 +3,12 @@
 import pandas as pd
 
 from baseball.constants import SHOHEI_OHTANI
-from baseball.data.savant.pitch.load import load_pitch_data
+from baseball.data.savant.pitch.load import make_sql_load_pitch_data
+from baseball.duckdb.tables import TABLES
 from baseball.projects.pitch_quality.data.cache_training_partitions import load_training_partitions
 from baseball.projects.pitch_quality.data.constants import CATEGORICAL_RESPONSE_INDICES
 from baseball.projects.pitch_quality.model.constants import TRAIN_TEST_CUTOFF_DATE
+from baseball.utils.duckdb import query
 
 
 def assign_probable_playing_totals(pitch_df: pd.DataFrame) -> pd.DataFrame:
@@ -97,7 +99,34 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
         batter are deemed "likely" occupants of their respective roles.
     """
     # load the pitch-level data
-    pitch_data_df = load_pitch_data(date_min=date_min, date_max=date_max)
+    sql = f"""
+    WITH pitch AS (
+        {make_sql_load_pitch_data(date_min=date_min, date_max=date_max)}
+    ),
+    fa AS (
+        SELECT * FROM '{TABLES.model_outputs.smoothed_fastball_shapes_player_season_game}'
+    )
+    SELECT
+        p.*,
+        fa.game_idx,
+        --- FF diffs ---
+        fa.release_speed_FF - p.release_speed AS release_speed_FF_delta,
+        fa.release_pos_z_FF - p.release_pos_z AS release_pos_z_FF_delta,
+        fa.pfx_z_FF - p.pfx_z AS pfx_z_FF_delta,
+        fa.arm_angle_FF - p.arm_angle AS arm_angle_FF_delta,
+        IF(p.bats = 'L', -1, 1) * (fa.pfx_x_FF - p.pfx_x) AS pfx_x_batter_neutral_FF_delta,
+
+        --- SI diffs ---
+        fa.release_speed_SI - p.release_speed AS release_speed_SI_delta,
+        fa.release_pos_z_SI - p.release_pos_z AS release_pos_z_SI_delta,
+        fa.pfx_z_SI - p.pfx_z AS pfx_z_SI_delta,
+        fa.arm_angle_SI - p.arm_angle AS arm_angle_SI_delta,
+        IF(p.bats = 'L', -1, 1) * (fa.pfx_x_SI - p.pfx_x) AS pfx_x_batter_neutral_SI_delta,
+
+    FROM pitch p
+    LEFT JOIN fa USING(pitcher, season, game_pk, game_date)
+    """
+    pitch_data_df = query(sql)
 
     # make the categorical response index
     pitch_data_df["categorical_response_idx"] = pitch_data_df["pitch_outcome_category"].replace(
