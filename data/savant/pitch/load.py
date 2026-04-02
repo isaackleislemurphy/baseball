@@ -7,8 +7,6 @@ from baseball.utils.duckdb import query
 INVALID_PITCH_FILTER = f"""
         -- filter to ensure a "real" pitch offering
         p.pitch_type in {DATA_CONSTANTS.PITCH_TYPES} AND
-        -- filter to non-spring training games, i.e. competitive games
-        p.game_type in {DATA_CONSTANTS.GAME_TYPES} AND
         -- filter out eephus pitches and "fastballs" from position players pitching
         p.release_speed >= {DATA_CONSTANTS.MIN_VELO} AND
         -- weird pitch types
@@ -21,17 +19,13 @@ INVALID_PITCH_FILTER = f"""
 """
 
 
-def load_pitch_data(
-    date_min: str = "2020-01-01", date_max: str = "2025-12-31", addl_where_clause: str = ""
-) -> pd.DataFrame:
-    """
-    Query cleaned, feature-engineered Statcast pitch-level data from DuckDB-backed parquet files.
-
-    This function executes a single DuckDB SQL query over season-partitioned Statcast
-    parquet files to produce a modeling-ready pitch-level table. The query applies
-    domain-specific pitch validity filters, engineers batter- and pitcher-neutral
-    features, expands count state indicators, and imputes missing xwOBA values for
-    balls in play using historical averages by batted-ball type and hit location.
+def make_sql_load_pitch_data(
+    date_min: str = "2020-01-01",
+    date_max: str = "2025-12-31",
+    addl_where_clause: str = "",
+    game_types: tuple[str] = DATA_CONSTANTS.GAME_TYPES,
+) -> str:
+    """Makes the DuckDB SQL for the `load_pitch_data()` function below
 
     Parameters
     ----------
@@ -43,10 +37,12 @@ def load_pitch_data(
     addl_where_clause : str, default = ""
         Additional SQL to include in your filtering, to save on memory etc.
         User expected to have  familiarity with this function and does so at their own risk.
+    game_types : list[str], default = ('W', 'L', 'D', 'F', 'R')
+        Game types to filter to. Default is ('W', 'L', 'D', 'F', 'R'), i.e. non-ST games
 
     Returns
     -------
-    pd.DataFrame
+    SQL for a query that returns:
         A pitch-level DataFrame suitable for downstream modeling. The output includes:
         - Game, inning, and count state information
         - Pitcher- and batter-handedness indicators
@@ -54,16 +50,6 @@ def load_pitch_data(
         - Expanded count dummy variables (e.g. "0_0", "3_2")
         - Pitch outcome labels and events
         - Observed and imputed xwOBA values for balls in play
-
-    Notes
-    -----
-    - Invalid or non-competitive pitches are filtered out using
-      `INVALID_PITCH_FILTER`, which excludes bunts, catcher interference, position-
-      player pitches, spring training games, and malformed pitch types.
-    - For balls in play with missing xwOBA, values are imputed using league-average
-      xwOBA conditional on (bb_type, hit_location) computed within the query.
-    - All joins and feature engineering are performed in SQL to minimize Python-side
-      memory overhead and to leverage DuckDB’s vectorized execution.
     """
 
     sql = f"""
@@ -90,6 +76,7 @@ def load_pitch_data(
         p.inning_topbot,
         p.at_bat_number,
         p.pitch_number,
+        p.game_type,
 
         -- personnel info --
         p.pitcher,
@@ -158,7 +145,10 @@ def load_pitch_data(
         IF(p.pitch_outcome_category = 'bip' AND p.xwoba IS NULL, xwf.xwoba, p.xwoba) xwoba,
         p.xwoba xwoba_raw,
         xwf.xwoba AS xwoba_fill,
-        p.woba_value
+        p.woba_value,
+
+        -- tango runs --
+        p.delta_pitcher_run_exp
 
     FROM '{TABLES.pitch.savant}' p
 
@@ -168,6 +158,7 @@ def load_pitch_data(
 
     WHERE p.game_date >= '{date_min}' AND
         p.game_date <= '{date_max}' AND
+        p.game_type IN {game_types} AND
         {INVALID_PITCH_FILTER}
         {addl_where_clause}
 
@@ -178,5 +169,53 @@ def load_pitch_data(
         p.at_bat_number,
         p.pitch_number
     """
+    return sql
+
+
+def load_pitch_data(
+    date_min: str = "2020-01-01", date_max: str = "2025-12-31", addl_where_clause: str = ""
+) -> pd.DataFrame:
+    """
+    Query cleaned, feature-engineered Statcast pitch-level data from DuckDB-backed parquet files.
+
+    This function executes a single DuckDB SQL query over season-partitioned Statcast
+    parquet files to produce a modeling-ready pitch-level table. The query applies
+    domain-specific pitch validity filters, engineers batter- and pitcher-neutral
+    features, expands count state indicators, and imputes missing xwOBA values for
+    balls in play using historical averages by batted-ball type and hit location.
+
+    Parameters
+    ----------
+    date_min : str, default "2020-01-01"
+        Inclusive lower bound on `game_date` for pitches returned.
+        Intended to support partial-season or rolling-window queries.
+    date_max : str, default "2025-12-31"
+        Inclusive upper bound on `game_date` for pitches returned.
+    addl_where_clause : str, default = ""
+        Additional SQL to include in your filtering, to save on memory etc.
+        User expected to have  familiarity with this function and does so at their own risk.
+
+    Returns
+    -------
+    pd.DataFrame
+        A pitch-level DataFrame suitable for downstream modeling. The output includes:
+        - Game, inning, and count state information
+        - Pitcher- and batter-handedness indicators
+        - Batter- and pitcher-neutralized release, movement, and location features
+        - Expanded count dummy variables (e.g. "0_0", "3_2")
+        - Pitch outcome labels and events
+        - Observed and imputed xwOBA values for balls in play
+
+    Notes
+    -----
+    - Invalid or non-competitive pitches are filtered out using
+      `INVALID_PITCH_FILTER`, which excludes bunts, catcher interference, position-
+      player pitches, spring training games, and malformed pitch types.
+    - For balls in play with missing xwOBA, values are imputed using league-average
+      xwOBA conditional on (bb_type, hit_location) computed within the query.
+    - All joins and feature engineering are performed in SQL to minimize Python-side
+      memory overhead and to leverage DuckDB’s vectorized execution.
+    """
+    sql = make_sql_load_pitch_data(date_min=date_min, date_max=date_max, addl_where_clause=addl_where_clause)
     df = query(sql)
     return df
