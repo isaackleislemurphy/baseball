@@ -7,7 +7,6 @@ basic, physical release characteristics (arm angle and velocity).
 """
 
 import itertools
-import os
 
 import numpy as np
 import pandas as pd
@@ -21,28 +20,13 @@ from baseball.data.savant.pitch.load import load_pitch_data
 from baseball.projects.pitch_quality.data.etl import partition_pitch_data
 from baseball.projects.pitch_quality.model.submodels.expected_movement.constants import (
     JOBLIB_BACKEND,
-    SCRIPT_DIR,
-    XMVMT_DUCK_DB_PARQUET_PATH,
+    MIN_XMVMT_PITCHES,
+    XMVMT_INPUTS,
+    XMVMT_INPUTS_UNION,
     XMVMT_OBJECT_PATH,
+    XMVMT_OUTPUTS,
 )
 from baseball.utils.general import load_pickled_object, write_pickled_object
-
-# Inputs: basic physical characteristics of the release
-EXPECTED_MVMT_INPUTS = {
-    "FF": ["arm_angle", "release_speed"],
-    "SI": ["arm_angle", "release_speed"],
-    "BB": ["arm_angle", "release_speed", "cos_spin_axis_pitcher_neutral", "sin_spin_axis_pitcher_neutral"],
-    "OS": ["arm_angle", "release_speed"],
-}
-# have any/all xMvmt feature, for use in pandas column slicing and munging
-EXPECTED_MVMT_INPUTS_UNION = sorted(list(set().union(*EXPECTED_MVMT_INPUTS.values())))
-# EXPECTED_MVMT_INPUTS = ["arm_angle", "release_speed"]
-
-# Outputs: basic movement metrics to model. No SSW for now.
-EXPECTED_MVMT_OUTPUTS = ["pfx_z", "pfx_x_pitcher_neutral"]
-
-# Minimum sample size to include a pitcher-season in the training set
-MIN_EXPECTED_MVMT_PITCHES = 25
 
 
 class ExpectedMovement:
@@ -84,15 +68,15 @@ class ExpectedMovement:
         pitch_group_types : tuple[str], default ("BB", "SI", "FF", "OS")
             Pitch groups to model. Each group gets its own set of Gaussian Process
             regressors for each movement output. Groups should align with keys in
-            `EXPECTED_MVMT_INPUTS`.
+            `XMVMT_INPUTS`.
         kernel : sklearn.gaussian_process.kernels.Kernel
             Kernel used for all Gaussian Process regressors. Passed through directly
             to sklearn's `GaussianProcessRegressor`.
         random_state : int, default 2026
             Random seed for optimizer restarts and reproducibility.
         """
-        self.inputs = EXPECTED_MVMT_INPUTS
-        self.outputs = EXPECTED_MVMT_OUTPUTS
+        self.inputs = XMVMT_INPUTS
+        self.outputs = XMVMT_OUTPUTS
         self.pitch_group_types = pitch_group_types
 
         # Initialize scalers for input features
@@ -140,9 +124,7 @@ class ExpectedMovement:
         )
         return pitch_data_df
 
-    def _aggregate_pitch_data(
-        self, pitch_data_df: pd.DataFrame, min_pitches: int = MIN_EXPECTED_MVMT_PITCHES
-    ) -> pd.DataFrame:
+    def _aggregate_pitch_data(self, pitch_data_df: pd.DataFrame, min_pitches: int = MIN_XMVMT_PITCHES) -> pd.DataFrame:
         """
         Aggregate pitch-level data to pitcher-season-pitch-group averages.
 
@@ -171,12 +153,12 @@ class ExpectedMovement:
         """
 
         # aggregations
-        _agg_fns = {item: np.mean for item in EXPECTED_MVMT_INPUTS_UNION + EXPECTED_MVMT_OUTPUTS}
+        _agg_fns = {item: np.mean for item in XMVMT_INPUTS_UNION + XMVMT_OUTPUTS}
         _agg_fns.update({"n_pitches": np.sum})
 
         # average over movement, slot, and velo
         pitch_type_avg_df = (
-            pitch_data_df.dropna(subset=EXPECTED_MVMT_INPUTS_UNION + EXPECTED_MVMT_OUTPUTS)
+            pitch_data_df.dropna(subset=XMVMT_INPUTS_UNION + XMVMT_OUTPUTS)
             .assign(n_pitches=1)
             .groupby(["pitcher", "season", "pitch_group", "pitch_type"], as_index=False)
             .agg(_agg_fns)
@@ -300,16 +282,22 @@ class ExpectedMovement:
         pd.DataFrame
             Pitch-level DataFrame augmented with expected movement estimates.
         """
+
+        def _concat(dfs: pd.DataFrame) -> pd.DataFrame:
+            return pd.concat(dfs, axis=0).reset_index(drop=True)
+
         if use_parallel:
             _predict_df = lambda i: self._predict(pred_df.iloc[i : i + chunk_size])
-            return Parallel(n_jobs=cpu_count(), backend=JOBLIB_BACKEND, verbose=2)(
-                delayed(_predict_df)(i) for i in trange(0, pred_df.shape[0], chunk_size)
+            return _concat(
+                Parallel(n_jobs=cpu_count(), backend=JOBLIB_BACKEND, verbose=2)(
+                    delayed(_predict_df)(i) for i in trange(0, pred_df.shape[0], chunk_size)
+                )
             )
         else:
-            return pd.concat(
+            _concat(
                 [self._predict(pred_df.iloc[i : i + chunk_size]) for i in trange(0, pred_df.shape[0], chunk_size)],
                 axis=0,
-            ).reset_index(drop=True)
+            )
 
 
 def train_expected_movement_models() -> ExpectedMovement:
