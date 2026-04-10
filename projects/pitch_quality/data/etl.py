@@ -102,13 +102,11 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
     sql = f"""
     WITH pitch AS (
         {make_sql_load_pitch_data(date_min=date_min, date_max=date_max)}
-    ),
-    fa AS (
-        SELECT * FROM '{TABLES.model_outputs.smoothed_fastball_shapes_player_season_game}'
     )
     SELECT
         p.*,
         fa.game_idx,
+
         --- FF diffs ---
         fa.release_speed_FF - p.release_speed AS release_speed_FF_delta,
         fa.release_pos_z_FF - p.release_pos_z AS release_pos_z_FF_delta,
@@ -123,8 +121,19 @@ def load_pitch_quality_model_data(date_min: str = "2020-01-01", date_max: str = 
         fa.arm_angle_SI - p.arm_angle AS arm_angle_SI_delta,
         IF(p.bats = 'L', -1, 1) * (fa.pfx_x_SI - p.pfx_x) AS pfx_x_batter_neutral_SI_delta,
 
+        p.pfx_z - xmvmt.x_pfx_z AS pfx_z_xmvmt_delta,
+        (
+            IF(p.bats = 'L', -1, 1)
+            * IF(p.throws = 'L', -1, 1)
+            * (p.pfx_x_pitcher_neutral - xmvmt.x_pfx_x_pitcher_neutral)
+        )  AS pfx_x_batter_neutral_mvmt_delta
+
+
     FROM pitch p
-    LEFT JOIN fa USING(pitcher, season, game_pk, game_date)
+    LEFT JOIN '{TABLES.model_outputs.smoothed_fastball_shapes_player_season_game}'
+        AS fa USING(pitcher, season, game_pk, game_date)
+    LEFT JOIN '{TABLES.model_outputs.expected_fastball_movement}'
+        AS xmvmt USING(game_pk, at_bat_number, pitch_number)
     """
     pitch_data_df = query(sql)
 
