@@ -7,7 +7,7 @@ from baseball.data.savant.pitch.load import load_pitch_data
 from baseball.projects.pitch_quality.model.submodels.expected_movement.constants import (
     XMVMT_DUCK_DB_PARQUET_PATH,
     XMVMT_INPUTS_UNION,
-    XMVMT_OUTPUTS,
+    XMVMT_PRED_COLNAMES,
 )
 from baseball.projects.pitch_quality.model.submodels.expected_movement.model import (
     ExpectedMovement,
@@ -81,7 +81,7 @@ def make_and_save_expected_movement_predictions(date_min: str, date_max: str) ->
 
     # slice down columns
     xmvmt_preds = xmvmt_preds[
-        ["game_pk", "at_bat_number", "pitch_number", "xmvmt_pitch_group"] + XMVMT_INPUTS_UNION + XMVMT_OUTPUTS
+        ["game_pk", "at_bat_number", "pitch_number", "xmvmt_pitch_group"] + XMVMT_INPUTS_UNION + XMVMT_PRED_COLNAMES
     ]
 
     print("xMvmt predictions made")
