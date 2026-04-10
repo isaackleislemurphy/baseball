@@ -13,8 +13,13 @@ XMVMT_INPUTS = {
 XMVMT_INPUTS_UNION = sorted(list(set().union(*XMVMT_INPUTS.values())))
 # XMVMT_INPUTS = ["arm_angle", "release_speed"]
 
-# Outputs: basic movement metrics to model. No SSW for now.
+# Outputs/targets: basic movement metrics to model. No SSW for now.
 XMVMT_OUTPUTS = ["pfx_z", "pfx_x_pitcher_neutral"]
+
+# Prefix for the named column, i.e. the expected movement predictions
+XMVMT_PREFIX = "x_"
+# Column names for the predictions
+XMVMT_PRED_COLNAMES = [XMVMT_PREFIX + item for item in XMVMT_OUTPUTS]
 
 # Minimum sample size to include a pitcher-season in the training set
 MIN_XMVMT_PITCHES = 25
