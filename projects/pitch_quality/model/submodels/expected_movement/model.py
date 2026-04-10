@@ -25,6 +25,7 @@ from baseball.projects.pitch_quality.model.submodels.expected_movement.constants
     XMVMT_INPUTS_UNION,
     XMVMT_OBJECT_PATH,
     XMVMT_OUTPUTS,
+    XMVMT_PREFIX,
 )
 from baseball.utils.general import load_pickled_object, write_pickled_object
 
@@ -257,7 +258,7 @@ class ExpectedMovement:
                 if pitch_type_idx.size > 0:
                     y_hat[pitch_type_idx, col] = self.fits[(pitch_type, output)].predict(x_hat[pitch_type_idx])
 
-        y_hat = pd.DataFrame(y_hat, columns=["x_" + item for item in self.outputs], index=pred_df.index)
+        y_hat = pd.DataFrame(y_hat, columns=[XMVMT_PREFIX + item for item in self.outputs], index=pred_df.index)
         return pd.concat([pred_df, y_hat], axis=1)
 
     def predict(self, pred_df: pd.DataFrame, chunk_size: int = 5_000, use_parallel: bool = True) -> pd.DataFrame:
