@@ -1,5 +1,6 @@
 """Generic, codebase-wide utils"""
 
+import yaml
 import pickle
 from pathlib import Path
 from typing import Any
@@ -124,3 +125,11 @@ def load_pickled_object(path: str) -> Any:
 
     with path.open("rb") as f:
         return pickle.load(f)
+    
+
+def read_yaml(file_path) -> Any:
+    """
+    Read a YAML file and return its contents as a Python object.
+    """
+    with open(file_path, "r") as file:
+        return yaml.safe_load(file)
