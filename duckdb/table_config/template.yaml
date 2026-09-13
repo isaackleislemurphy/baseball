@@ -1,7 +1,36 @@
+# =============================================================================
+# Table Configuration Template
+# =============================================================================
+# Defines a single DuckDB parquet-backed table. Copy this file into
+# `table_config/` (naming convention: `<namespace>__<table_name>.yaml`) and add
+# its path to `registry.REGISTRY` to have it picked up by `register_tables`
+# and `DuckNamespaceContainer`.
+#
+# On registration, the following directory structure is created:
+#   db/<namespace>/<table_name>/
+# and tables become reachable as:
+#   TABLES.<namespace>.<table_name>
+#
+# Keys
+# ----
+# namespace : str
+#     Logical grouping for the table (top-level attribute on the container).
+# table_name : str
+#     Name of the table within its namespace.
+# parquet_write_file : str
+#     Parquet filename (or f-string template) that data is written to.
+# parquet_read_file : str
+#     Parquet filename used for reading. Can be ".parquet" to read all
+#     parquet files in the table directory.
+# schema : list of dict
+#     Ordered list of single-key mappings of column name to DuckDB type
+#     (e.g. STRING, FLOAT, INTEGER).
+# =============================================================================
+
 namespace : your_table_namespace # INSERT NAMESPACE HERE
-table_name : your_table_namespace  # INSERT TABLE NAME HERE
+table_name : your_table_name  # INSERT TABLE NAME HERE
 parquet_write_file : your_parquet_file.parquet  # parquet (or f-string template) to save files to
-parquet_read_file : your_parquet_file.parquet  # file for reading. Can also be ".parquet" to read all.
+parquet_read_file : your_parquet_file.parquet  # file for reading. Can also be "*.parquet" to read all.
 
 # table schema
 schema:

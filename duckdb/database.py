@@ -1,3 +1,32 @@
+"""
+DuckDB table registry and namespace access layer.
+
+This module scaffolds the on-disk parquet storage for DuckDB tables and exposes
+them as nested attributes for convenient access.
+
+Tables are declared in ``registry.REGISTRY`` and configured via per-table YAML
+files (see ``table_config/``). Each config specifies a ``namespace``,
+``table_name``, ``parquet_write_file``, ``parquet_read_file``, and a ``schema``.
+
+The module provides two entry points:
+
+- ``register_tables`` : Ensures the directory structure
+  (``db/<namespace>/<table_name>/``) exists for every registered table,
+  optionally seeding each with a ``.gitkeep``.
+- ``DuckNamespaceContainer`` : Reads all registered configs and exposes each
+  table's parquet read path as ``TABLES.<namespace>.<table_name>``
+  (e.g. ``TABLES.chadwick.ids``).
+
+Attributes
+----------
+DUCKDB_DIR : str
+    Absolute path to the ``baseball/duckdb`` package directory, derived from
+    the ``PYTHONPATH`` environment variable.
+DB_DIR : str
+    Absolute path to the ``db`` directory where namespaced parquet tables are
+    stored.
+"""
+
 import os
 from types import SimpleNamespace
 
@@ -44,7 +73,19 @@ class DuckNamespaceContainer:
     """
 
     def __init__(self) -> None:
-        """init fn"""
+        """
+        Initializes the container and populates it with namespaced tables.
+
+        Registers table filepaths on disk, reads every table config listed in
+        ``REGISTRY``, groups those tables by their namespace, and attaches each
+        namespace to the instance as an attribute holding a ``SimpleNamespace``
+        of its tables.
+
+        Returns
+        -------
+        None
+        """
+        # make sure table paths are ready to go
         register_tables()
 
         # pull all the tables (flat)
@@ -67,7 +108,21 @@ class DuckNamespaceContainer:
             self.add_attribute(namespace, SimpleNamespace(**tbls))
 
     def parse_filepath(self, table_config: dict) -> str:
-        """"""
+        """
+        Builds the absolute path to a table's parquet read file from its config.
+
+        Parameters
+        ----------
+        table_config : dict
+            Parsed table configuration containing the keys ``namespace``,
+            ``table_name``, and ``parquet_read_file``.
+
+        Returns
+        -------
+        str
+            The joined filepath pointing at the table's parquet read file,
+            of the form ``<DB_DIR>/<namespace>/<table_name>/<parquet_read_file>``.
+        """
         return os.path.join(
             DB_DIR,
             table_config["namespace"],  # namespace
@@ -93,9 +148,4 @@ class DuckNamespaceContainer:
         # name is a string, value is anything
         setattr(self, name, value)
 
-
-if __name__ == "__main__":
-    TABLES = DuckNamespaceContainer()
-    breakpoint()
-
-    print("complete")
+TABLES = DuckNamespaceContainer()
