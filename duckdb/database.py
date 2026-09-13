@@ -44,7 +44,7 @@ from types import SimpleNamespace
 from baseball.duckdb.registry import REGISTRY
 from baseball.utils.general import make_gitkeep, read_yaml
 
-DUCKDB_DIR = os.path.join(os.environ.get("PYTHONPATH"), "baseball", "duckdb")
+DUCKDB_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(DUCKDB_DIR, "db")
 
 
