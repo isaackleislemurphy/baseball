@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import yaml
 
 
 def str2bool(x: Any) -> bool:
@@ -124,3 +125,28 @@ def load_pickled_object(path: str) -> Any:
 
     with path.open("rb") as f:
         return pickle.load(f)
+
+
+def read_yaml(file_path: str) -> Any:
+    """
+    Read a YAML file and return its contents as a Python object.
+    """
+    with open(file_path, "r") as file:
+        return yaml.safe_load(file)
+
+
+def make_gitkeep(dir_path: str) -> None:
+    """
+    Create an empty .gitkeep file in the given directory so Git
+    tracks the (otherwise empty) folder.
+
+    Parameters
+    -----------
+    dir_path : str
+        Directory that should be kept.
+    """
+    dir_path = Path(dir_path)
+    dir_path.mkdir(parents=True, exist_ok=True)
+    gitkeep_path = dir_path / ".gitkeep"
+    gitkeep_path.touch(exist_ok=True)
+    return gitkeep_path

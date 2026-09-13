@@ -1,0 +1,10 @@
+namespace : strategery 
+table_name : re24_transition_probs
+parquet_write_file : re24_transition_probs.parquet
+parquet_read_file : re24_transition_probs.parquet
+
+# table schema
+schema:
+  - col_1 : STRING
+  - col_2 : FLOAT
+  - col_3 : INTEGER

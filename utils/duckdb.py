@@ -1,7 +1,8 @@
 """ """
 
-import duckdb
 import pandas as pd
+
+import duckdb
 
 
 def query(sql: str) -> pd.DataFrame:

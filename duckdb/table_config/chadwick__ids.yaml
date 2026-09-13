@@ -1,0 +1,10 @@
+namespace : chadwick
+table_name : ids
+parquet_write_file : chadwick_ids.parquet
+parquet_read_file : chadwick_ids.parquet
+
+# table schema
+schema:
+  - col_1 : STRING
+  - col_2 : FLOAT
+  - col_3 : INTEGER

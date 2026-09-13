@@ -1,0 +1,10 @@
+namespace : pitch
+table_name : savant
+parquet_read_file : "*.parquet"
+parquet_write_file : "raw_savant_pitch_data_{season}.parquet"
+
+# table schema
+schema:
+  - col_1 : STRING
+  - col_2 : FLOAT
+  - col_3 : INTEGER
