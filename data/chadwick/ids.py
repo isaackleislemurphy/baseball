@@ -62,6 +62,11 @@ def scrape_raw_chadwick_people_csvs() -> pd.DataFrame:
     # cast BAM to int
     id_df["key_mlbam"] = id_df["key_mlbam"].values.astype(int)
 
+    # rename so that IDs are not ``key_<source>``, but rather ``source_<id>``
+    id_df = id_df.rename(
+        columns={col: col.replace("key_", "") + "_id" for col in id_df.columns if col.startswith("key_")}
+    )
+
     return id_df
 
 
@@ -87,6 +92,12 @@ def upload_chadwick_ids() -> None:
     for col in ("name_last", "name_first"):
         id_df[col] = [unidecode(item) if isinstance(item, str) else item for item in id_df[col]]
     LOGGER.info("Chadwick names converted to A-Z lettering.")
+
+    # rename so that IDs are not ``key_<source>``, but rather ``source_<id>``
+    id_df = id_df.rename(
+        columns={col: col.replace("key_", "") + "_id" for col in id_df.columns if col.startswith("key_")}
+    )
+    LOGGER.info("ID columns renamed")
 
     # get info for table
     table_config = read_yaml("duckdb/table_config/chadwick__ids.yaml")
