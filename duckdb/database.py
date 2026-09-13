@@ -27,17 +27,18 @@ DB_DIR : str
     stored.
 
 TABLES : DuckNamespaceContainer
-    Container to organize tables/namespaces filepaths, so that you can query 
+    Container to organize tables/namespaces filepaths, so that you can query
     via something like:
         ```
         SELECT
-            * 
+            *
         FROM {TABLES.namespace.table}
         ```
     without having to manually insert the specific parquet paths
 """
 
 import os
+from string import Formatter
 from types import SimpleNamespace
 
 from baseball.duckdb.registry import REGISTRY
@@ -74,6 +75,70 @@ def register_tables(gitkeep: bool = True) -> None:
         # add a gitkeep, if desired
         if gitkeep and ".gitkeep" not in os.listdir(table_dir):
             make_gitkeep(table_dir)
+
+
+def make_read_path(table_config: dict) -> str:
+    """
+    Builds the absolute path to a table's parquet read file from its config.
+
+    Parameters
+    ----------
+    table_config : dict
+        Parsed table configuration containing the keys ``namespace``,
+        ``table_name``, and ``parquet_read_file``.
+
+    Returns
+    -------
+    str
+        The joined filepath pointing at the table's parquet read file, of the
+        form ``<DB_DIR>/<namespace>/<table_name>/<parquet_read_file>``.
+    """
+    return os.path.join(
+        DB_DIR,
+        table_config["namespace"],  # namespace
+        table_config["table_name"],  # table
+        table_config["parquet_read_file"],  # parquets
+    )
+
+
+def make_write_path(table_config: dict, **kwargs) -> str:
+    """
+    Builds the absolute path to a table's parquet write file from its config.
+
+    Constructs the path from the table's ``namespace``, ``table_name``, and
+    ``parquet_write_file``. If ``parquet_write_file`` is a ``str.format``
+    template containing replacement fields (e.g. ``games_{year}.parquet``),
+    the path is formatted using ``kwargs``.
+
+    Parameters
+    ----------
+    table_config : dict
+        Parsed table configuration containing the keys ``namespace``,
+        ``table_name``, and ``parquet_write_file``.
+    **kwargs
+        Keyword arguments supplying values for any replacement fields present
+        in ``parquet_write_file``.
+
+    Returns
+    -------
+    str
+        The joined filepath pointing at the table's parquet write file, of the
+        form ``<DB_DIR>/<namespace>/<table_name>/<parquet_write_file>``, with
+        any template fields substituted from ``kwargs``.
+    """
+
+    write_path = os.path.join(
+        DB_DIR,
+        table_config["namespace"],  # namespace
+        table_config["table_name"],  # table
+        table_config["parquet_write_file"],  # parquets
+    )
+
+    # check if we need to format
+    if any(field_name is not None for _, field_name, _, _ in Formatter().parse(write_path)):
+        write_path = write_path.format(**kwargs)
+
+    return write_path
 
 
 class DuckNamespaceContainer:
@@ -134,12 +199,7 @@ class DuckNamespaceContainer:
             The joined filepath pointing at the table's parquet read file,
             of the form ``<DB_DIR>/<namespace>/<table_name>/<parquet_read_file>``.
         """
-        return os.path.join(
-            DB_DIR,
-            table_config["namespace"],  # namespace
-            table_config["table_name"],  # table
-            table_config["parquet_read_file"],  # parquets
-        )
+        return make_read_path(table_config)
 
     def add_attribute(self, name, value):
         """
@@ -158,5 +218,6 @@ class DuckNamespaceContainer:
         """
         # name is a string, value is anything
         setattr(self, name, value)
+
 
 TABLES = DuckNamespaceContainer()
