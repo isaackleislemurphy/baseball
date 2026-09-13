@@ -1,9 +1,7 @@
-namespace : your_table_namespace  # where does your table live?
-
-table_name : your_table_namespace  # what is your table named
-
-parquet_path : your_parquet_path.parquet  # either a filepath (a "/*.parquet" will be added)
-                                          # or a specific file
+namespace : your_table_namespace  
+table_name : your_table_namespace  
+parquet_write_path : your_parquet_path.parquet
+parquet_read_path : your_parquet_path.parquet
 
 # table schema
 schema:
