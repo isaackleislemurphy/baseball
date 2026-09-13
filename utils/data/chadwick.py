@@ -19,7 +19,7 @@ def query_chadwick_ids() -> pd.DataFrame:
     """
     sql = f"""
     SELECT
-        * 
+        *
     FROM '{TABLES.chadwick.ids}'
     """
     return query(sql)
