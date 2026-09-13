@@ -1,0 +1,12 @@
+namespace : your_table_namespace  # where does your table live?
+
+table_name : your_table_namespace  # what is your table named
+
+parquet_path : your_parquet_path.parquet  # either a filepath (a "/*.parquet" will be added)
+                                          # or a specific file
+
+# table schema
+schema:
+  - col_1 : STRING
+  - col_2 : FLOAT
+  - col_3 : INTEGER
