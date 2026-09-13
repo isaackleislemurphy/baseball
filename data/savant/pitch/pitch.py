@@ -1,16 +1,15 @@
 """Extract fns to pull pitch tracking data from Savant"""
 
-from typing import Iterable
 from datetime import datetime
+from typing import Iterable
 
 import pandas as pd
 import pybaseball as pb
 
 import baseball.data.savant.pitch.constants as DATA_CONSTANTS
-from baseball.data.savant.pitch.utils import get_season_savant_duckdb_filepath
-from baseball.utils.logging import get_logger
 from baseball.duckdb.database import make_write_path
 from baseball.utils.general import read_yaml
+from baseball.utils.logging import get_logger
 
 TODAY = datetime.now().date()
 LOGGER = get_logger()
@@ -36,11 +35,11 @@ def scrape_savant_pitch_data(
     date_max: str = str(TODAY), date_min: str = DATA_CONSTANTS.MIN_STATCAST_DATE
 ) -> pd.DataFrame:
     """
-    Pull raw Statcast pitch-level data from Baseball Savant for a date range.
+    Pull raw pitch-level Statcast data from Baseball Savant across a date range.
 
-    This is a thin wrapper around `pybaseball.statcast()` that standardizes
-    column names immediately after retrieval. No feature engineering or
-    filtering is done here beyond renaming columns.
+    Thin wrapper around `pybaseball.statcast()` that just renames columns to
+    project conventions right after the pull. No feature engineering, no
+    filtering here — that's someone else's job downstream.
 
     Parameters
     ----------
@@ -48,19 +47,18 @@ def scrape_savant_pitch_data(
         Inclusive upper bound on game date (YYYY-MM-DD). Defaults to today.
     date_min : str, default=DATA_CONSTANTS.MIN_STATCAST_DATE
         Inclusive lower bound on game date (YYYY-MM-DD). Defaults to the
-        earliest Statcast date supported by the project.
+        earliest Statcast date the project supports.
 
     Returns
     -------
     pd.DataFrame
-        Raw pitch-level Statcast data with columns renamed according to
+        Raw pitch-level Statcast data, columns renamed per
         `DATA_CONSTANTS.STATCAST_RENAMINGS`.
 
     Notes
     -----
-    - This function intentionally stays close to the raw Savant schema.
-    - Downstream functions are responsible for feature engineering,
-      filtering, and storage.
+    - Stays deliberately close to the raw Savant schema.
+    - Feature engineering, filtering, and storage all happen downstream.
     """
     data_df = pb.statcast(start_dt=date_min, end_dt=date_max).rename(columns=DATA_CONSTANTS.STATCAST_RENAMINGS)
     return data_df
@@ -68,11 +66,11 @@ def scrape_savant_pitch_data(
 
 def engineer_misc_features(data_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Engineer lightweight, miscellaneous, non-model-specific pitch features.
+    Tack on a grab-bag of lightweight, non-model-specific pitch features.
 
-    Adds a grab-bag of simple indicators and derived columns that are broadly
-    useful across modeling tasks (classification, regression, hierarchical
-    models). These features are cheap to compute and stable across seasons.
+    Adds cheap, broadly-useful indicators and derived columns that come in
+    handy across modeling tasks (classification, regression, hierarchical
+    stuff). Nothing here is expensive to compute or season-dependent.
 
     Parameters
     ----------
@@ -82,25 +80,25 @@ def engineer_misc_features(data_df: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Copy of the input DataFrame with additional engineered columns.
+        Copy of the input with the engineered columns tacked on.
 
     Engineered Features
     -------------------
     - is_bunt_attempt : int
-        Indicator for bunt attempts, parsed from the pitch description.
+        Indicator for bunt attempts, parsed out of the pitch description.
     - pitch_group : str
-        Coarse pitch grouping (e.g., FF, SI, BB) using project-level mappings.
+        Coarse pitch grouping (e.g., FF, SI, BB) via project-level mappings.
     - is_oppo_hand : int
         Indicator for opposite-handed batter–pitcher matchups.
     - residual_speed : float
         Effective velocity minus release velocity.
     - pitch_outcome_category : str
-        Coarse categorical pitch outcome derived from Statcast descriptions.
+        Coarse categorical pitch outcome pulled from Statcast descriptions.
 
     Notes
     -----
-    - This function does *not* drop rows or enforce completeness.
-    - It is safe to apply before caching to DuckDB.
+    - Does *not* drop rows or enforce completeness.
+    - Safe to run before caching to DuckDB.
     """
     data_df = data_df.copy()
 
@@ -125,19 +123,19 @@ def engineer_misc_features(data_df: pd.DataFrame) -> pd.DataFrame:
 
 def convert_feet_to_inches(data_df: pd.DataFrame, feet_cols: list[str] = ["pfx_x", "pfx_z"]) -> pd.DataFrame:
     """
-    Convert selected movement columns from feet to inches. Just movement for now
+    Convert selected columns from feet to inches. Just movement for now.
 
     Parameters
     ----------
     data_df : pd.DataFrame
         Pitch-level Statcast data.
     feet_cols : list[str], default ["pfx_x", "pfx_z"]
-        Columns measured in feet to convert to inches.
+        Columns measured in feet that should get bumped to inches.
 
     Returns
     -------
     pd.DataFrame
-        Copy of the input DataFrame with converted units.
+        Copy of the input with the units converted.
     """
     # copy dataframe, lest I drown in warnings
     data_df = data_df.copy()
@@ -150,10 +148,11 @@ def convert_feet_to_inches(data_df: pd.DataFrame, feet_cols: list[str] = ["pfx_x
 
 def _scrape_and_transform_pitch_data(date_min: str, date_max: str) -> pd.DataFrame:
     """
-    End-to-end extraction of raw pitch data for a date range.
+    Pull and lightly clean pitch data for a date range, end to end.
 
-    Convenience wrapper that pulls raw Savant data and applies the minimal
-    feature engineering and unit conversions needed before storage.
+    Convenience wrapper that grabs the raw Savant data and runs the minimal
+    feature engineering + unit conversions we want in place before anything
+    hits disk.
 
     Parameters
     ----------
@@ -165,13 +164,13 @@ def _scrape_and_transform_pitch_data(date_min: str, date_max: str) -> pd.DataFra
     Returns
     -------
     pd.DataFrame
-        Cleaned, lightly engineered pitch-level dataset suitable for
-        caching to parquet / DuckDB.
+        Cleaned, lightly-engineered pitch data, ready to cache to
+        parquet / DuckDB.
 
     Notes
     -----
-    - This is the last step before data is persisted.
-    - No modeling assumptions are baked in here.
+    - Last stop before the data gets persisted.
+    - No modeling assumptions baked in here.
     """
 
     return (
@@ -183,7 +182,7 @@ def _scrape_and_transform_pitch_data(date_min: str, date_max: str) -> pd.DataFra
 
 def scrape_and_transform_pitch_data_byseason(season: int) -> pd.DataFrame:
     """
-    Extract raw Statcast pitch data for a single MLB season.
+    Pull and clean pitch data for a single MLB season.
 
     Parameters
     ----------
@@ -193,28 +192,28 @@ def scrape_and_transform_pitch_data_byseason(season: int) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Pitch-level Statcast data for the specified season, with basic
-        feature engineering applied.
+        Pitch-level Statcast data for that season, with the basic feature
+        engineering applied.
 
     Notes
     -----
     - Uses calendar-year bounds (Jan 1 – Dec 31).
-    - Postseason games are included if present in Savant.
+    - Postseason games come along if Savant has them.
     """
     return _scrape_and_transform_pitch_data(date_min=f"{season}-01-01", date_max=f"{season}-12-31")
 
 
 def upload_savant_pitch_data_byseason(season: int) -> None:
     """
-    Extract and persist raw pitch data for a season to DuckDB-compatible parquet.
+    Pull a season of pitch data and stash it to DuckDB-friendly parquet.
 
-    This function materializes season-level pitch data to disk, serving as the
-    ingestion step for downstream DuckDB-based workflows.
+    Materializes season-level pitch data to disk — this is the ingestion step
+    that everything downstream in DuckDB leans on.
 
     Parameters
     ----------
     season : int
-        MLB season year to extract and cache.
+        MLB season year to pull and cache.
 
     Returns
     -------
@@ -223,12 +222,12 @@ def upload_savant_pitch_data_byseason(season: int) -> None:
     Side Effects
     ------------
     - Writes a parquet file to the season-specific DuckDB filepath.
-    - Overwrites existing files if present. TODO: throw a warning here.
+    - Overwrites whatever's already there. TODO: throw a warning here.
 
     Notes
     -----
-    - Intended to be run once per season.
-    - Downstream models should never hit Savant directly.
+    - Meant to run once per season.
+    - Downstream models should never be hitting Savant directly.
     """
     # pull in the data
     LOGGER.info(f"Ingesting & transforming raw Savant pitch data for season = {season}")
@@ -254,10 +253,15 @@ def upload_savant_pitch_data_byseason(season: int) -> None:
 
 def upload_savant_pitch_data(seasons: Iterable = range(2017, 2026)) -> None:
     """
-    Initialize DuckDB parquet files for all supported Statcast seasons.
+    Stand up the DuckDB parquet files for every supported Statcast season.
 
-    Iterates through the configured season range and caches raw pitch data
-    for each season individually.
+    Walks the configured season range and caches raw pitch data one season
+    at a time.
+
+    Parameters
+    ----------
+    seasons : Iterable, default=range(2017, 2026)
+        Seasons to pull and cache.
 
     Returns
     -------
@@ -265,9 +269,9 @@ def upload_savant_pitch_data(seasons: Iterable = range(2017, 2026)) -> None:
 
     Notes
     -----
-    - Designed for one-time setup or full refreshes.
-    - This can take a while and will hit the Savant API repeatedly.
-        Make sure your wifi connection is solid.
+    - Built for one-time setup or a full refresh.
+    - This takes a while and hammers the Savant API repeatedly — make sure
+      your wifi's solid.
     """
     for season in seasons:
         upload_savant_pitch_data_byseason(season)
