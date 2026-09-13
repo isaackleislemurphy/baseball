@@ -6,7 +6,7 @@ from typing import Iterable
 import pandas as pd
 import pybaseball as pb
 
-import baseball.data.savant.pitch.constants as DATA_CONSTANTS
+import baseball.data.pitch.savant.constants as DATA_CONSTANTS
 from baseball.duckdb.database import make_write_path
 from baseball.utils.general import read_yaml
 from baseball.utils.logging import get_logger
