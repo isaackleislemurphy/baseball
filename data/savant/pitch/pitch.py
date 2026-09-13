@@ -243,7 +243,7 @@ def upload_savant_pitch_data_byseason(season: int) -> None:
     table_config = read_yaml("duckdb/table_config/pitch__savant.yaml")
 
     # filename to store parquet
-    parquet_filename = make_write_path(table_config)
+    parquet_filename = make_write_path(table_config, season=season)
     LOGGER.info("Pitch db table prepared. ")
 
     # save to parquet
