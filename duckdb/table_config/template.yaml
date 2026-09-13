@@ -1,7 +1,7 @@
-namespace : your_table_namespace  
-table_name : your_table_namespace  
-parquet_write_file : your_parquet_file.parquet
-parquet_read_file : your_parquet_file.parquet
+namespace : your_table_namespace # INSERT NAMESPACE HERE
+table_name : your_table_namespace  # INSERT TABLE NAME HERE
+parquet_write_file : your_parquet_file.parquet  # parquet (or f-string template) to save files to
+parquet_read_file : your_parquet_file.parquet  # file for reading. Can also be ".parquet" to read all.
 
 # table schema
 schema:
