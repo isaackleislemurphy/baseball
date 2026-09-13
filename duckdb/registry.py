@@ -3,5 +3,8 @@ enumerated here will be 'picked up'"""
 
 REGISTRY = [
     "table_config/chadwick__ids.yaml",
-    "table_config/pitch__savant.yaml"
+    "table_config/pitch__savant.yaml",
+    "table_config/strategery__re24.yaml",
+    "table_config/strategery__re24_transition_probs.yaml",
+    "table_config/strategery__win_probability.yaml",
 ]

@@ -1,7 +1,7 @@
 namespace : pitch
 table_name : savant
-parquet_read_path : *.parquet
-parquet_write_path : "raw_savant_pitch_data_{season}.parquet"
+parquet_read_file : "*.parquet"
+parquet_write_file : "raw_savant_pitch_data_{season}.parquet"
 
 # table schema
 schema:

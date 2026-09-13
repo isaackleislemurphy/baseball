@@ -1,7 +1,7 @@
 namespace : strategery 
 table_name : re24
-parquet_write_path : re24.parquet
-parquet_read_path : re24.parquet
+parquet_write_file : re24.parquet
+parquet_read_file : re24.parquet
 
 # table schema
 schema:

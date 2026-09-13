@@ -1,7 +1,7 @@
 namespace : chadwick
 table_name : ids
-parquet_write_path : chadwick_ids.parquet
-parquet_read_path : chadwick_ids.parquet
+parquet_write_file : chadwick_ids.parquet
+parquet_read_file : chadwick_ids.parquet
 
 # table schema
 schema:
