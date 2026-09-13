@@ -25,6 +25,16 @@ DUCKDB_DIR : str
 DB_DIR : str
     Absolute path to the ``db`` directory where namespaced parquet tables are
     stored.
+
+TABLES : DuckNamespaceContainer
+    Container to organize tables/namespaces filepaths, so that you can query 
+    via something like:
+        ```
+        SELECT
+            * 
+        FROM {TABLES.namespace.table}
+        ```
+    without having to manually insert the specific parquet paths
 """
 
 import os
@@ -68,8 +78,9 @@ def register_tables(gitkeep: bool = True) -> None:
 
 class DuckNamespaceContainer:
     """
-    Exposes the DuckDB parquet tables in `SCHEMA` as nested attributes, so a table
-    is reachable as `TABLES.<namespace>.<table>` (e.g. `TABLES.chadwick.ids`).
+    Exposes the DuckDB parquet tables declared in ``REGISTRY`` as nested
+    attributes, so a table is reachable as ``TABLES.<namespace>.<table>``
+    (e.g. ``TABLES.chadwick.ids``).
     """
 
     def __init__(self) -> None:
