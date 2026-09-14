@@ -38,11 +38,17 @@ TABLES : DuckNamespaceContainer
 """
 
 import os
+from datetime import datetime
 from string import Formatter
 from types import SimpleNamespace
 
+import pandas as pd
+
 from baseball.duckdb.registry import REGISTRY
 from baseball.utils.general import make_gitkeep, read_yaml
+from baseball.utils.logging import get_logger
+
+LOGGER = get_logger()
 
 DUCKDB_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(DUCKDB_DIR, "db")
@@ -139,6 +145,38 @@ def make_write_path(table_config: dict, **kwargs) -> str:
         write_path = write_path.format(**kwargs)
 
     return write_path
+
+
+def write_parquet(df: pd.DataFrame, table_config_yaml: str, **kwargs: dict) -> None:
+    """
+    Writes a parquet to the write-path specified by `table_configs`, while
+    timestamping the prediction. Specifically:
+        (1) reads in the table's config from yaml (in `duckdb/table_config`)
+        (2) constructs the filepath along which `df` should be parqueted.
+        (3) saves the parquet
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The dataframe to be uploaded
+    table_config_yaml : str
+        The yaml file in `duckdb/table_config` specifying the table and parquet
+        structure.
+    **kwargs : dict
+        Keyword arguments to `make_write_path()`, for the purposes of formatting
+        bracketed strings.
+
+    """
+    # get info for table
+    table_config = read_yaml(table_config_yaml)
+    LOGGER.info(f"Table config for `{table_config['namespace']}.{table_config['table_name']}` successfully loaded.")
+
+    # filename to store parquet
+    parquet_filename = make_write_path(table_config, **kwargs)
+
+    # timestamp ``df`` and send out
+    df.assign(updated_at=datetime.utcnow()).to_parquet(parquet_filename, index=False)
+    LOGGER.info(f'Data successfully "uploaded" to: {parquet_filename}')
 
 
 class DuckNamespaceContainer:
