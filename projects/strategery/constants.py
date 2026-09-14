@@ -4,6 +4,7 @@ import numpy as np
 
 # roll it after this many runs
 MAX_RUNS_PER_INNING = 15
+
 # game's over when score gap gets this bad
 MAX_SCORE_DIFFERENTIAL = 21
 
