@@ -2,7 +2,6 @@
 Use this to define the DAG
 """
 
-
 # fmt: off
 # isort: off
 DEPENDENCIES = {

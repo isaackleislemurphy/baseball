@@ -213,7 +213,7 @@ def upload() -> None:
     the resulting DataFrame using the strategery win-probability table config.
     """
     win_probs = simulate_win_probs()
-    write_parquet(win_probs, "duckdb/table_config/strategery__win_probability_simulated.py")
+    write_parquet(win_probs, "duckdb/table_config/strategery__win_probability_simulated.yaml")
 
 
 if __name__ == "__main__":
