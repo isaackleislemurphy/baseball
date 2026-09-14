@@ -7,7 +7,7 @@ Use this to define the DAG
 DEPENDENCIES = {
     "chadwick": set(),
     "savant_pitch" : set(),
-        # "re24" : {"savant_pitch"},
+        "re24" : {"savant_pitch"},
         # "win_prob" : {"re24"},
         # "win_prob_stochastic" : {"re24"}
 }
