@@ -19,7 +19,20 @@ LOGGER = get_logger(__name__)
 
 
 def query_transition_probs() -> pd.DataFrame:
-    """ """
+    """
+    Query PA-level state transition probabilities from DuckDB.
+
+    Pulls the empirical plate-appearance transition probabilities produced by the
+    RE24 pipeline, keyed by half inning and starting game state.
+
+    Returns
+    -------
+    pd.DataFrame
+        Transition probabilities with columns: inning_topbot, game_state,
+        game_state_post, runs (runs scored on the transition), and prob
+        (empirical probability of the transition).
+    """
+
     sql = f"""
     SELECT
         inning_topbot,
@@ -33,14 +46,40 @@ def query_transition_probs() -> pd.DataFrame:
 
 
 def construct_game_transition_matrix(transition_probs: pd.DataFrame) -> tuple[pd.DataFrame, list[tuple]]:
-    """ """
+    """
+    Build a game-level absorbing Markov transition matrix over full game states.
+
+    Expands the PA-level transition probabilities into a game-wide state space
+    defined by (inning, half_inning, home_lead, game_state), plus two absorbing
+    terminal states ("home_win", "home_loss"). Impossible states (e.g., the home
+    team leading in the top of the 1st, or leading in the bottom of the 9th+) are
+    pruned from the state space. Transitions are routed to terminal states when the
+    game is decided by score differential, walk-off, or a shut-the-door final out;
+    otherwise they advance the half inning or reflect an in-inning advancement.
+
+    Parameters
+    ----------
+    transition_probs : pd.DataFrame
+        PA-level transition probabilities, as returned by `query_transition_probs`.
+
+    Returns
+    -------
+    P_full : np.ndarray
+        A square, row-stochastic transition matrix over the expanded game state
+        space. Row/column ordering matches `full_states`. The final two entries
+        correspond to the terminal states ("home_win", "home_loss").
+    full_states : list[tuple]
+        The ordered list of states indexing `P_full`. Each state is a tuple of
+        (inning, half_inning, home_lead, game_state); terminal states use
+        (None, None, None, "home_win") and (None, None, None, "home_loss").
+    """
 
     # ================================================================================================ #
-    # [STEP 0] Define the state space
+    # [STEP 1] Define the state space
     # ================================================================================================ #
     innings = np.arange(1, 11)
     half_innings = ("Top", "Bot")
-    home_leads = np.arange(-MAX_SCORE_DIFFERENTIAL + 1, MAX_SCORE_DIFFERENTIAL)  # [-20, 20]
+    home_leads = np.arange(-MAX_SCORE_DIFFERENTIAL + 1, MAX_SCORE_DIFFERENTIAL)  # [-MAX_SCORE_DIFF, MAX_SCORE_DIFF]
     full_states = tuple(itertools.product(innings, half_innings, home_leads, GAME_STATES))
     # lop off impossible starting states; as much as it might feel like it, home team can't be leading T1.
     full_states = tuple([item for item in full_states if not (item[0] == 1 and item[1] == "Top" and item[2] > 0)])
@@ -50,7 +89,7 @@ def construct_game_transition_matrix(transition_probs: pd.DataFrame) -> tuple[pd
     full_states += ((None, None, None, "home_win"), (None, None, None, "home_loss"))
 
     # ================================================================================================ #
-    # [STEP 1] Init empty transition matrix
+    # [STEP 2] Init empty transition matrix
     # ================================================================================================ #
     # NOTE—this is the first big/sparse Markov chain I've spun up in this repo, which means it's the first time I've
     # gotten burned trying to repeatedly insert into a massive dataframe. So at some point, the other Markov
@@ -156,7 +195,21 @@ def construct_game_transition_matrix(transition_probs: pd.DataFrame) -> tuple[pd
 
 
 def calculate_closed_form_win_probs() -> pd.DataFrame:
-    """ """
+    """
+    Compute home win probabilities in closed form via an absorbing Markov chain.
+
+    Ingests PA-level transition probabilities, expands them into a game-level
+    transition matrix, partitions it into transient (Q) and absorbing (R) blocks,
+    and solves B = (I - Q)^-1 R directly for the absorption (win/loss) probabilities
+    of every transient game state.
+
+    Returns
+    -------
+    pd.DataFrame
+        Absorption probabilities by game state, with columns: inning,
+        inning_topbot, home_lead, game_state, home_win_prob, and home_loss_prob.
+    """
+
     # pull in PA-to-PA transition probs
     transition_probs = query_transition_probs()
     LOGGER.info("PA-level transition probabilities ingested.")
@@ -187,7 +240,12 @@ def calculate_closed_form_win_probs() -> pd.DataFrame:
 
 
 def upload() -> None:
-    """ """
+    """
+    Calculate closed-form home win probabilities and save them to DuckDB.
+
+    Runs the full closed-form win probability pipeline, selects the reporting
+    columns, and writes the result to the strategery win-probability table config.
+    """
     win_probs = calculate_closed_form_win_probs()[
         ["game_state", "inning", "inning_topbot", "home_lead", "home_win_prob"]
     ]
