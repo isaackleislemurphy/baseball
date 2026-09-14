@@ -1,5 +1,6 @@
 """Extract fns to pull pitch tracking data from Savant"""
 
+import argparse
 from datetime import datetime
 from typing import Iterable
 
@@ -277,5 +278,37 @@ def upload_savant_pitch_data(seasons: Iterable = range(2017, 2026)) -> None:
         upload_savant_pitch_data_byseason(season)
 
 
+def get_args() -> argparse.Namespace:
+    """
+    Parse CLI args for the season range to pull and cache.
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed args with `first_season` and `last_season` (both int).
+    """
+    parser = argparse.ArgumentParser(description="Pull & cache raw Savant pitch data for a range of seasons.")
+    parser.add_argument(
+        "--first_season",
+        type=int,
+        default=2017,
+        help="First season to pull (inclusive). Defaults to 2017.",
+    )
+    parser.add_argument(
+        "--last_season",
+        type=int,
+        default=2025,
+        help="Last season to pull (inclusive). Defaults to 2025.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Main function"""
+    args = get_args()
+    seasons = list(range(args.first_season, args.last_season + 1))
+    upload_savant_pitch_data(seasons=seasons)
+
+
 if __name__ == "__main__":
-    upload_savant_pitch_data()
+    main()
