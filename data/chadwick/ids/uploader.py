@@ -102,10 +102,10 @@ def upload_chadwick_ids() -> None:
     LOGGER.info("Chadwick data written.")
 
 
-def main() -> None:
+def upload() -> None:
     """Main function"""
     upload_chadwick_ids()
 
 
 if __name__ == "__main__":
-    main()
+    upload()

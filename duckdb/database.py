@@ -167,6 +167,7 @@ def write_parquet(df: pd.DataFrame, table_config_yaml: str, **kwargs: dict) -> N
         bracketed strings.
 
     """
+
     # get info for table
     table_config = read_yaml(table_config_yaml)
     LOGGER.info(f"Table config for `{table_config['namespace']}.{table_config['table_name']}` successfully loaded.")

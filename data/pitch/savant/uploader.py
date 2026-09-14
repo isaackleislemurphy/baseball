@@ -294,7 +294,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def upload() -> None:
     """Main function"""
     args = get_args()
     seasons = list(range(args.first_season, args.last_season + 1))
@@ -302,4 +302,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    upload()

@@ -1,7 +1,7 @@
 namespace : strategery 
 table_name : win_probability
-parquet_write_file : win_probability.parquet
-parquet_read_file : win_probability.parquet
+parquet_write_file : win_probability_simulated.parquet
+parquet_read_file : win_probability_simulated.parquet
 
 # table schema
 schema:
