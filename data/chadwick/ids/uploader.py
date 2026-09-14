@@ -13,8 +13,7 @@ from pybaseball import chadwick_register
 from unidecode import unidecode
 
 from baseball.data.chadwick.ids.constants import CHADWICK_PEOPLE_CSV_LINK
-from baseball.duckdb.database import make_write_path
-from baseball.utils.general import read_yaml
+from baseball.duckdb.database import write_parquet
 from baseball.utils.logging import get_logger
 
 LOGGER = get_logger()
@@ -99,16 +98,8 @@ def upload_chadwick_ids() -> None:
     )
     LOGGER.info("ID columns renamed")
 
-    # get info for table
-    table_config = read_yaml("duckdb/table_config/chadwick__ids.yaml")
-
-    # filename to store parquet
-    parquet_filename = make_write_path(table_config)
-    LOGGER.info("Chadwick db table prepared. ")
-
-    # save it to the "database"
-    id_df.to_parquet(parquet_filename, index=False)
-    LOGGER.info(f"Chadwick IDs uploaded to: {parquet_filename}")
+    write_parquet(id_df, "duckdb/table_config/chadwick__ids.yaml")
+    LOGGER.info("Chadwick data written.")
 
 
 def main() -> None:

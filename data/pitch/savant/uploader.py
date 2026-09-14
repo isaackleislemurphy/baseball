@@ -8,8 +8,7 @@ import pandas as pd
 import pybaseball as pb
 
 import baseball.data.pitch.savant.constants as DATA_CONSTANTS
-from baseball.duckdb.database import make_write_path
-from baseball.utils.general import read_yaml
+from baseball.duckdb.database import write_parquet
 from baseball.utils.logging import get_logger
 
 TODAY = datetime.now().date()
@@ -240,16 +239,8 @@ def upload_savant_pitch_data_byseason(season: int) -> None:
     data_raw[HAWKEYE_FLOAT_OVERRIDES] = data_raw[HAWKEYE_FLOAT_OVERRIDES].astype(float)
     LOGGER.info("Hawkeye columns casted")
 
-    # sort out table config + parquet storage
-    table_config = read_yaml("duckdb/table_config/pitch__savant.yaml")
-
-    # filename to store parquet
-    parquet_filename = make_write_path(table_config, season=season)
-    LOGGER.info("Pitch db table prepared. ")
-
-    # save to parquet
-    data_raw.to_parquet(parquet_filename, index=False)
-    LOGGER.info(f"Savant pitch data uploaded to: {parquet_filename}")
+    write_parquet(data_raw, "duckdb/table_config/pitch__savant.yaml")
+    LOGGER.info("Savant data successfully uploaded.")
 
 
 def upload_savant_pitch_data(seasons: Iterable = range(2017, 2026)) -> None:
