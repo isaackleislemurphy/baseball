@@ -239,7 +239,7 @@ def upload_savant_pitch_data_byseason(season: int) -> None:
     data_raw[HAWKEYE_FLOAT_OVERRIDES] = data_raw[HAWKEYE_FLOAT_OVERRIDES].astype(float)
     LOGGER.info("Hawkeye columns casted")
 
-    write_parquet(data_raw, "duckdb/table_config/pitch__savant.yaml")
+    write_parquet(data_raw, "duckdb/table_config/pitch__savant.yaml", season=season)
     LOGGER.info("Savant data successfully uploaded.")
 
 
