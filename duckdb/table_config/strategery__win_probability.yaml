@@ -4,7 +4,11 @@ parquet_write_file : win_probability.parquet
 parquet_read_file : win_probability.parquet
 
 # table schema
+# table schema
 schema:
-  - col_1 : STRING
-  - col_2 : FLOAT
-  - col_3 : INTEGER
+  - game_state : STRING
+  - inning : INTEGER
+  - inning_topbot : STRING
+  - home_lead : INTEGER
+  - home_win_prob : FLOAT
+  - updated_at : TIMESTAMP

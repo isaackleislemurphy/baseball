@@ -6,7 +6,7 @@ import numpy as np
 MAX_RUNS_PER_INNING = 15
 
 # game's over when score gap gets this bad
-MAX_SCORE_DIFFERENTIAL = 21
+MAX_SCORE_DIFFERENTIAL = 15
 
 # baseball game states
 GAME_STATES = [
