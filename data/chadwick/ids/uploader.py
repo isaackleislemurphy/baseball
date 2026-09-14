@@ -111,5 +111,10 @@ def upload_chadwick_ids() -> None:
     LOGGER.info(f"Chadwick IDs uploaded to: {parquet_filename}")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Main function"""
     upload_chadwick_ids()
+
+
+if __name__ == "__main__":
+    main()
