@@ -2,6 +2,7 @@
 Use this to define the DAG
 """
 
+
 # fmt: off
 # isort: off
 DEPENDENCIES = {
@@ -9,7 +10,7 @@ DEPENDENCIES = {
     "savant_pitch" : set(),
         "re24" : {"savant_pitch"},
         # "win_prob" : {"re24"},
-        # "win_prob_stochastic" : {"re24"}
+            "win_prob_simulated" : {"re24"}
 }
 # isort: on
 # fmt: on
