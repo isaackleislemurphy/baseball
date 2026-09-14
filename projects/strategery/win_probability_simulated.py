@@ -177,8 +177,17 @@ def simulate_start_of_extras_home_win_probs(p_runs: dict[tuple[int, str], td.Cat
 
 def simulate_win_probs() -> None:
     """
-    Simulates and saves win probabilities. Note that this sits downstream of the `strategery.re24` table,
-    so it only be as fresh as that table.
+    Simulate home win probabilities across all game states and return them.
+
+    Sits downstream of the `strategery.re24` table, so results are only as fresh
+    as that table. Loads RE24 values, builds run-scoring distributions, computes
+    the start-of-extras win probability, and then simulates win probabilities for
+    all regular inning game states.
+
+    Returns
+    -------
+    pd.DataFrame
+        Simulated win probabilities by game_state, inning, inning_topbot, and home_lead.
     """
     # pull in RE24
     re24 = query_re24_values()
@@ -197,7 +206,12 @@ def simulate_win_probs() -> None:
 
 
 def upload() -> None:
-    """ """
+    """
+    Run the win probability simulation and write results to Parquet.
+
+    Executes the full simulation pipeline via `simulate_win_probs` and persists
+    the resulting DataFrame using the strategery win-probability table config.
+    """
     win_probs = simulate_win_probs()
     write_parquet(win_probs, "duckdb/table_config/strategery__win_probability_simulated.py")
 
