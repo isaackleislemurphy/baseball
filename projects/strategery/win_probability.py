@@ -15,7 +15,7 @@ from baseball.utils.duckdb import query
 from baseball.utils.logging import get_logger
 
 warnings.filterwarnings("ignore", category=PerformanceWarning)
-LOGGER = get_logger(__name__)
+LOGGER = get_logger()
 
 
 def query_transition_probs() -> pd.DataFrame:
