@@ -1,8 +1,14 @@
+"""Calculates leverage index"""
+
+import numpy as np
 import pandas as pd
 
-from baseball.duckdb.database import TABLES, describe_table, write_parquet
+from baseball.duckdb.database import TABLES, write_parquet
 from baseball.projects.strategery.constants import GAME_STATES, LEVERAGE_DENOM, MAX_SCORE_DIFFERENTIAL
 from baseball.utils.duckdb import query
+from baseball.utils.logging import get_logger
+
+LOGGER = get_logger()
 
 
 def calculate_leverage() -> pd.DataFrame:
@@ -127,10 +133,22 @@ def calculate_leverage() -> pd.DataFrame:
     )
     SELECT 
         *,
-        expected_home_win_prob_delta / {LEVERAGE_DENOM}
+        expected_home_win_prob_delta / {LEVERAGE_DENOM} AS leverage_index
     FROM wp_deltas
     """
 
     lev_df = query(sql)
+    assert np.isclose(lev_df.prob_check.values, 1.0).all(), "You have transition probs that do not sum to 1!"
 
     return lev_df
+
+
+def upload() -> None:
+    """Calculates and uploads leverage indices"""
+    leverage_df = calculate_leverage()
+    LOGGER.info("Leverage indices calculated.")
+    write_parquet(leverage_df, "duckdb/table_config/strategery__leverage_index.yaml")
+
+
+if __name__ == "__main__":
+    upload()
