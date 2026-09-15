@@ -258,5 +258,12 @@ class DuckNamespaceContainer:
         # name is a string, value is anything
         setattr(self, name, value)
 
-
 TABLES = DuckNamespaceContainer()
+
+
+def describe_table(namespace: str, table_name: str) -> None:
+    """ """
+    df = pd.read_parquet(getattr(getattr(TABLES, namespace), table_name))
+    fields = df.columns.tolist()
+    dtypes = df.dtypes.tolist()
+    print(pd.DataFrame(dtypes, index=fields).T)
