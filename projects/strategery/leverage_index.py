@@ -110,6 +110,8 @@ def calculate_leverage() -> pd.DataFrame:
                 ELSE wp_post.home_win_prob END AS home_win_prob_post,
         FROM pre_post pp
         JOIN '{TABLES.strategery.win_probability}' wp_pre USING(inning, inning_topbot, home_lead, game_state)
+        -- left join prevents states that exceed max win prob from causing rows to drop out——the nulls get 
+        -- handled via the game_end_home_<win/loss> and don't ever come into the picture here.
         LEFT JOIN '{TABLES.strategery.win_probability}' wp_post ON
             pp.inning_post = wp_post.inning AND
             pp.inning_topbot_post = wp_post.inning_topbot AND
