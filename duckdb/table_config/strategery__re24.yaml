@@ -5,6 +5,23 @@ parquet_read_file : re24.parquet
 
 # table schema
 schema:
-  - col_1 : STRING
-  - col_2 : FLOAT
-  - col_3 : INTEGER
+  - inning_topbot : STRING
+  - game_state : STRING
+  - run_exp : FLOAT
+  - p_0 : FLOAT
+  - p_1 : FLOAT
+  - p_2 : FLOAT
+  - p_3 : FLOAT
+  - p_4 : FLOAT
+  - p_5 : FLOAT
+  - p_6 : FLOAT
+  - p_7 : FLOAT
+  - p_8 : FLOAT
+  - p_9 : FLOAT
+  - p_10 : FLOAT
+  - p_11 : FLOAT
+  - p_12 : FLOAT
+  - p_13 : FLOAT
+  - p_14 : FLOAT
+  - p_15 : FLOAT
+  - updated_at : TIMESTAMP

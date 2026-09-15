@@ -37,3 +37,7 @@ GAME_STATES = [
 ]
 GAME_STATES_FULL = GAME_STATES + ["---:3"]
 RUNS_ARRAY = np.arange(MAX_RUNS_PER_INNING + 1)
+
+# per Tango, average WP change is 0.034. We'll use this
+# for now.
+LEVERAGE_DENOM = 0.034

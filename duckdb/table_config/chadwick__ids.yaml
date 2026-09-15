@@ -5,6 +5,12 @@ parquet_read_file : chadwick_ids.parquet
 
 # table schema
 schema:
-  - col_1 : STRING
-  - col_2 : FLOAT
-  - col_3 : INTEGER
+  - name_last : STRING
+  - name_first : STRING
+  - mlbam_id : INTEGER
+  - retro_id : STRING
+  - bbref_id : STRING
+  - fangraphs_id : STRING
+  - mlb_played_first : INTEGER
+  - mlb_played_last : INTEGER
+  - updated_at : TIMESTAMP

@@ -1,0 +1,13 @@
+namespace : strategery 
+table_name : leverage_index
+parquet_write_file : leverage_index.parquet
+parquet_read_file : leverage_index.parquet
+
+# table schema
+schema:
+  - game_state : STRING
+  - inning : INTEGER
+  - inning_topbot : STRING
+  - home_lead : INTEGER
+  - leverage_index : FLOAT
+  - updated_at : TIMESTAMP
