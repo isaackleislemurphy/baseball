@@ -26,8 +26,8 @@ def calculate_leverage() -> pd.DataFrame:
     game_state_str = "', '".join(GAME_STATES)
     sql = f"""
     WITH cross_join AS (
-        SELECT 
-            inning, 
+        SELECT
+            inning,
             inning_topbot,
             home_lead,
             game_state
@@ -35,9 +35,9 @@ def calculate_leverage() -> pd.DataFrame:
         CROSS JOIN UNNEST(['Top', 'Bot']) AS h(inning_topbot)
         CROSS JOIN UNNEST(range(-{MAX_SCORE_DIFFERENTIAL}, {MAX_SCORE_DIFFERENTIAL + 1})) AS l(home_lead)
         CROSS JOIN UNNEST(['{game_state_str}']) AS g(game_state)
-    ), 
+    ),
     pre_post AS (
-        SELECT 
+        SELECT
             base.inning,
             CASE WHEN tp.game_state_post = '---:3'
                     THEN LEAST(IF(base.inning_topbot = 'Top', base.inning, base.inning + 1), 10)
@@ -49,23 +49,25 @@ def calculate_leverage() -> pd.DataFrame:
                 WHEN tp.game_state_post = '---:3' AND base.inning_topbot = 'Bot'
                     THEN 'Top'
                 ELSE base.inning_topbot END AS inning_topbot_post,
-            -- lead -- 
+            -- lead --
             base.home_lead,
             base.home_lead + IF(base.inning_topbot = 'Top', -1, 1) * tp.runs AS home_lead_post,
             -- game state --
             base.game_state,
             tp.game_state_post AS game_state_post_transition,
-            CASE WHEN tp.game_state_post = '---:3' AND (base.inning <= 8 OR (base.inning_topbot = 'Top' AND base.inning = 9))
-                    THEN '---:0'
-                WHEN tp.game_state_post = '---:3' AND (base.inning >= 10 OR (base.inning_topbot = 'Bot' AND base.inning = 9))
-                    THEN '-2-:0'
+            CASE WHEN tp.game_state_post = '---:3' AND (base.inning <= 8 OR
+                      (base.inning_topbot = 'Top' AND base.inning = 9))
+                      THEN '---:0'
+                WHEN tp.game_state_post = '---:3' AND (base.inning >= 10 OR
+                     (base.inning_topbot = 'Bot' AND base.inning = 9))
+                     THEN '-2-:0'
                 ELSE tp.game_state_post END AS game_state_post,
             tp.runs,
             IF(
                 (
                     -- didn't score enough B9+
-                    base.inning >= 9 AND 
-                    base.inning_topbot = 'Bot' AND 
+                    base.inning >= 9 AND
+                    base.inning_topbot = 'Bot' AND
                     tp.game_state_post = '---:3' AND
                     (base.home_lead + tp.runs < 0)
                 ) OR (
@@ -98,9 +100,9 @@ def calculate_leverage() -> pd.DataFrame:
         FROM cross_join base
         JOIN '{TABLES.strategery.re24_transition_probs}' tp
             USING(inning_topbot, game_state)
-    ), 
+    ),
     pre_post_wp AS (
-        SELECT 
+        SELECT
             pp.*,
             wp_pre.home_win_prob AS home_win_prob,
             CASE WHEN pp.game_end_home_win = 1 THEN 1.0
@@ -108,10 +110,10 @@ def calculate_leverage() -> pd.DataFrame:
                 ELSE wp_post.home_win_prob END AS home_win_prob_post,
         FROM pre_post pp
         JOIN '{TABLES.strategery.win_probability}' wp_pre USING(inning, inning_topbot, home_lead, game_state)
-        LEFT JOIN '{TABLES.strategery.win_probability}' wp_post ON 
-            pp.inning_post = wp_post.inning AND 
+        LEFT JOIN '{TABLES.strategery.win_probability}' wp_post ON
+            pp.inning_post = wp_post.inning AND
             pp.inning_topbot_post = wp_post.inning_topbot AND
-            pp.home_lead_post = wp_post.home_lead AND 
+            pp.home_lead_post = wp_post.home_lead AND
             pp.game_state_post = wp_post.game_state
     ),
     wp_deltas AS (
@@ -125,13 +127,13 @@ def calculate_leverage() -> pd.DataFrame:
                 prob * ABS(home_win_prob_post - home_win_prob)
             ) expected_home_win_prob_delta,
         FROM pre_post_wp
-        GROUP BY 
+        GROUP BY
             game_state,
             inning,
             inning_topbot,
             home_lead
     )
-    SELECT 
+    SELECT
         *,
         expected_home_win_prob_delta / {LEVERAGE_DENOM} AS leverage_index
     FROM wp_deltas
