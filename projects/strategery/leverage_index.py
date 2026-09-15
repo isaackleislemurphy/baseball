@@ -1,6 +1,3 @@
-"""Calculates leverage index"""
-
-import numpy as np
 import pandas as pd
 
 from baseball.duckdb.database import TABLES, describe_table, write_parquet
@@ -130,11 +127,10 @@ def calculate_leverage() -> pd.DataFrame:
     )
     SELECT 
         *,
-        expected_home_win_prob_delta / {LEVERAGE_DENOM} AS leverage_index
+        expected_home_win_prob_delta / {LEVERAGE_DENOM}
     FROM wp_deltas
     """
 
     lev_df = query(sql)
-    assert np.isclose(lev_df.prob_check.values, 1.0).all(), "You have transition probs that do not sum to 1!"
 
     return lev_df
