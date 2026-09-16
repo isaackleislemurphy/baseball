@@ -1,0 +1,16 @@
+namespace : strategery
+table_name : future_leverage
+parquet_write_file : future_leverage.parquet
+parquet_read_file : future_leverage.parquet
+
+# table schema
+schema:
+  - game_state : STRING
+  - inning : INTEGER
+  - inning_topbot : STRING
+  - home_lead : INTEGER
+  - expected_visits_1_plus : FLOAT
+  - expected_visits_2_plus : FLOAT
+  - expected_visits_3_plus : FLOAT
+  - expected_visits_4_plus : FLOAT
+  - updated_at : TIMESTAMP
