@@ -2,6 +2,7 @@
 
 from baseball.data.chadwick.ids import uploader as chadwick
 from baseball.data.pitch.savant import uploader as savant_pitch
+from baseball.projects.strategery import future_leverage as future_leverage
 from baseball.projects.strategery import leverage_index as leverage_index
 from baseball.projects.strategery import run_expectancy as re24
 from baseball.projects.strategery import win_probability as win_prob
@@ -14,4 +15,5 @@ RUNNERS = {
     "win_prob": win_prob.upload,
     "win_prob_simulated": win_prob_simulated.upload,
     "leverage_index": leverage_index.upload,
+    "future_leverage": future_leverage.upload,
 }
