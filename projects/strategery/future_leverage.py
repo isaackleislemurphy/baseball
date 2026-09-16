@@ -104,6 +104,12 @@ def calculate_expected_rest_of_game_leverage_visits(
     # calculate expected visits
     V, states = calculate_expected_rest_of_game_visits()
 
+    # thin down V so that you don't accidentally count leverage for your team batting.
+    # Multiplying by this ensures that you only count expected visits in the same half-
+    # inning
+    half_inns = np.array([item[1] for item in states[:-2]])
+    V_mask = (half_inns[:, None] == half_inns[None, :]).astype(float)
+
     # pull in leverage indices
     leverage = query_leverage()
     # maps (inning, inning_topbot, home_lead, game_state) --> LI
@@ -125,7 +131,7 @@ def calculate_expected_rest_of_game_leverage_visits(
     # itself (its LI lives on the diagonal of L, positionally, so just add (L >= lt)).
     expected_rog_visits = np.hstack(
         [
-            np.sum(V * (L >= lt).astype(float), axis=1, keepdims=True) + (inclusive * (L.T >= lt).astype(float))
+            np.sum(V * V_mask * (L >= lt).astype(float), axis=1, keepdims=True) + (inclusive * (L.T >= lt).astype(float))
             for lt in leverage_thresholds
         ]
     )
