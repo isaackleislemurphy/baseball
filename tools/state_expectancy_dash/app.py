@@ -38,7 +38,7 @@ MAX_HOME_LEAD = MAX_SCORE_DIFFERENTIAL - 1
 RUNS_DISPLAY_CAP = 8
 
 # flip this if you need to debug and view the session state in real time
-DEBUG = True
+DEBUG = False
 
 # again, doing a copy so that these can be pushed to GH in a clean / separate space.
 DATA_DIR = os.path.join(SCRIPT_DIR, "data")
