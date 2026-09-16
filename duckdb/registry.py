@@ -9,4 +9,5 @@ REGISTRY = [
     "table_config/strategery__win_probability.yaml",
     "table_config/strategery__win_probability_simulated.yaml",
     "table_config/strategery__leverage_index.yaml",
+    "table_config/strategery__future_leverage.yaml",
 ]
