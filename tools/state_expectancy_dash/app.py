@@ -4,14 +4,12 @@ import os
 import sys
 
 from pathlib import Path
-
+import duckdb
 import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-# app lives at baseball/tools/state_expectancy_dash/app.py
-from utils.duckdb import query
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -56,6 +54,25 @@ STATIC_PARQUETS = dict(
 # ----------------------------------------------------------------------------------------------------------------- #
 # Data loading
 # ----------------------------------------------------------------------------------------------------------------- #
+def query(sql: str) -> pd.DataFrame:
+    """
+    Helper to query from DuckDB. Copied from utils/duckdb.py
+
+    Parameters
+    ----------
+    sql : str
+        SQL-like code to hit DuckDB
+
+    Returns
+    -------
+    pd.DataFrame
+        The dataframe queried via duckdb.
+    """
+    con = duckdb.connect()
+    df = con.execute(sql).df()
+    return df
+
+
 @st.cache_data
 def load_re24() -> pd.DataFrame:
     """
