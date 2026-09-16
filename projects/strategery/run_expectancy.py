@@ -12,7 +12,7 @@ from baseball.projects.strategery.constants import (
 from baseball.utils.duckdb import query
 from baseball.utils.logging import get_logger
 
-LOGGER = get_logger(__name__)
+LOGGER = get_logger()
 
 
 TRANSITION_STATES = [

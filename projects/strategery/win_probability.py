@@ -15,7 +15,7 @@ from baseball.utils.duckdb import query
 from baseball.utils.logging import get_logger
 
 warnings.filterwarnings("ignore", category=PerformanceWarning)
-LOGGER = get_logger(__name__)
+LOGGER = get_logger()
 
 
 def query_transition_probs() -> pd.DataFrame:
@@ -79,7 +79,7 @@ def construct_game_transition_matrix(transition_probs: pd.DataFrame) -> tuple[pd
     # ================================================================================================ #
     innings = np.arange(1, 11)
     half_innings = ("Top", "Bot")
-    home_leads = np.arange(-MAX_SCORE_DIFFERENTIAL + 1, MAX_SCORE_DIFFERENTIAL)  # [-MAX_SCORE_DIFF, MAX_SCORE_DIFF]
+    home_leads = np.arange(-MAX_SCORE_DIFFERENTIAL, MAX_SCORE_DIFFERENTIAL + 1)  # [-MAX_SCORE_DIFF, MAX_SCORE_DIFF]
     full_states = tuple(itertools.product(innings, half_innings, home_leads, GAME_STATES))
     # lop off impossible starting states; as much as it might feel like it, home team can't be leading T1.
     full_states = tuple([item for item in full_states if not (item[0] == 1 and item[1] == "Top" and item[2] > 0)])
@@ -130,7 +130,7 @@ def construct_game_transition_matrix(transition_probs: pd.DataFrame) -> tuple[pd
                 # ================================================================================================ #
                 # [STEP 3B] Is the game over by score differential? If so, auto-transition to terminal state
                 # ================================================================================================ #
-                elif np.abs(home_lead_to) >= MAX_SCORE_DIFFERENTIAL:
+                elif np.abs(home_lead_to) > MAX_SCORE_DIFFERENTIAL:
                     term_state = "home_loss" if home_lead_to < 0 else "home_win"
                     P_full[
                         state_to_idx[(inning_from, half_inning_from, home_lead_from, game_state_from)],

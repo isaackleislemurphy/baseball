@@ -4,7 +4,6 @@ parquet_write_file : win_probability.parquet
 parquet_read_file : win_probability.parquet
 
 # table schema
-# table schema
 schema:
   - game_state : STRING
   - inning : INTEGER

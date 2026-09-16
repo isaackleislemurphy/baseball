@@ -5,6 +5,11 @@ parquet_read_file : re24_transition_probs.parquet
 
 # table schema
 schema:
-  - col_1 : STRING
-  - col_2 : FLOAT
-  - col_3 : INTEGER
+  - inning_topbot : STRING
+  - game_state : STRING
+  - game_state_post : STRING
+  - runs : INTEGER
+  - n_transitions : INTEGER
+  - n_total : INTEGER
+  - prob : FLOAT
+  - updated_at : TIMESTAMP

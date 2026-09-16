@@ -260,3 +260,25 @@ class DuckNamespaceContainer:
 
 
 TABLES = DuckNamespaceContainer()
+
+
+def describe_table(namespace: str, table_name: str) -> None:
+    """
+    Does a quick description of the table by printing fields and associated
+    dtypes.
+
+    Parameters
+    ----------
+    namespace : str
+        Table namespace
+    table_name : str
+        Table name
+
+    Returns
+    -------
+    None
+    """
+    df = pd.read_parquet(getattr(getattr(TABLES, namespace), table_name))
+    fields = df.columns.tolist()
+    dtypes = df.dtypes.tolist()
+    print(pd.DataFrame(dtypes, index=fields).T)
