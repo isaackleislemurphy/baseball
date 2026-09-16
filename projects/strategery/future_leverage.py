@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
-from baseball.duckdb.database import TABLES
+from baseball.duckdb.database import TABLES, write_parquet
 from baseball.projects.strategery.win_probability import construct_game_transition_matrix, query_transition_probs
 from baseball.utils.duckdb import query
 from baseball.utils.logging import get_logger
@@ -111,6 +111,7 @@ def calculate_expected_rest_of_game_leverage_visits(
         (row["inning"], row["inning_topbot"], row["home_lead"], row["game_state"]): row["leverage_index"]
         for _, row in leverage.iterrows()
     }
+    LOGGER.info("Leverage ingested.")
 
     # (1, |states| - 2) matrix of the leverage index at every state you could visit in the future.
     # NOTE—this is row-aligned with states[:-2], so it doubles as each starting state's own LI.
@@ -128,6 +129,7 @@ def calculate_expected_rest_of_game_leverage_visits(
             for lt in leverage_thresholds
         ]
     )
+    LOGGER.info("Expected rest-of-game visits above each leverage threshold calculated.")
 
     # convert to dataframe + add in state as pri-key
     expected_rog_visits = pd.concat(
@@ -139,3 +141,13 @@ def calculate_expected_rest_of_game_leverage_visits(
     )
 
     return expected_rog_visits
+
+
+def upload() -> None:
+    """Uploader function for future leverage"""
+    expected_rog_visits = calculate_expected_rest_of_game_leverage_visits()
+    write_parquet(expected_rog_visits, "duckdb/table_config/strategery__future_leverage.yaml")
+
+
+if __name__ == "__main__":
+    upload()
