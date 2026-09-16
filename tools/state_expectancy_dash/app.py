@@ -10,10 +10,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# # app lives at baseball/tools/state_expectancy_dash/app.py
-# # repo root is three parents up: app.py -> state_expectancy_dash -> tools -> baseball -> REPO ROOT
-# sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-from utils.duckdb import query
+# app lives at baseball/tools/state_expectancy_dash/app.py
+from baseball.utils.duckdb import query
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
