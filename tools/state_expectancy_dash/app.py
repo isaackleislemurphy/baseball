@@ -11,7 +11,7 @@ import pandas as pd
 import streamlit as st
 
 # app lives at baseball/tools/state_expectancy_dash/app.py
-from baseball.utils.duckdb import query
+from utils.duckdb import query
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
