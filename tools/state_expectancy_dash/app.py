@@ -1,15 +1,13 @@
 """Strategery dashboard: interactive win probability, RE24, and transition explorer."""
 
 import os
-import sys
 
-from pathlib import Path
-import duckdb
 import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
 
+import duckdb
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -123,7 +121,22 @@ def load_leverage() -> pd.DataFrame:
     pd.DataFrame
         Leverage indices by game_state, inning, inning_topbot, home_lead.
     """
-    return query(f"SELECT * FROM '{STATIC_PARQUETS['leverage_index']}'")
+    sql = f"""
+    SELECT
+        li.game_state,
+        li.inning,
+        li.inning_topbot,
+        li.home_lead,
+        li.leverage_index,
+        fl.expected_visits_1_plus li_1,
+        fl.expected_visits_2_plus li_2,
+        fl.expected_visits_3_plus li_3,
+        fl.expected_visits_4_plus li_4
+    FROM '{STATIC_PARQUETS['leverage_index']}' li
+    LEFT JOIN '{STATIC_PARQUETS['future_leverage']}' fl
+        USING(game_state, inning, inning_topbot, home_lead)
+    """
+    return query(sql)
 
 
 # ----------------------------------------------------------------------------------------------------------------- #
@@ -350,8 +363,22 @@ def report_leverage(leverage: pd.DataFrame, game_state: str, half_inning: str, i
         )
         return
 
-    li = float(row["leverage_index"].iloc[0])
-    st.metric("Leverage Index", f"{li:.2f}")
+    # LI metric on the left, 1x4 expected-visits table on the right
+    li_col, li_fut_table = st.columns([1, 3])
+
+    # plot the current leverage
+    with li_col:
+        li = float(row["leverage_index"].iloc[0])
+        st.metric("Leverage Index", f"{li:.2f}")
+
+    with li_fut_table:
+        lev_thresholds = [1, 2, 3, 4]
+        visit_cols = [f"li_{item}" for item in lev_thresholds]
+        table_map = {f"li_{item}": f"E[PA w/ LI ≥ {item}]" for item in lev_thresholds}
+        # rename to friendly headers and format to 1 decimal
+        table = row[visit_cols].rename(columns=table_map).round(1)
+        st.caption("Expected rest-of-game PAs above leverage threshold")
+        st.dataframe(table.reset_index(drop=True), use_container_width=True, hide_index=True)
 
 
 def report_transitions(transition_probs: pd.DataFrame, game_state: str, half_inning: str, top_n: int = 8) -> None:
@@ -394,7 +421,7 @@ def report_transitions(transition_probs: pd.DataFrame, game_state: str, half_inn
         unsafe_allow_html=True,
     )
 
-    st.dataframe(trans.reset_index(drop=True), use_container_width=True)
+    st.dataframe(trans.reset_index(drop=True), use_container_width=True, hide_index=True)
 
 
 # ----------------------------------------------------------------------------------------------------------------- #
@@ -431,11 +458,7 @@ def main() -> None:
 
     with left:
         st.subheader("Game State")
-        render_diamond(
-            # st.session_state.on_first,
-            # st.session_state.on_second,
-            # st.session_state.on_third,
-        )
+        render_diamond()
 
         outs = st.radio("Outs", options=[0, 1, 2], horizontal=True, key="outs")
 

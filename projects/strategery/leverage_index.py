@@ -141,8 +141,12 @@ def calculate_leverage() -> pd.DataFrame:
     FROM wp_deltas
     """
 
+    # make sure transition probs sum to one
     lev_df = query(sql)
     assert np.isclose(lev_df.prob_check.values, 1.0).all(), "You have transition probs that do not sum to 1!"
+
+    # trim extra cols
+    lev_df = lev_df.drop(columns=["prob_check", "expected_home_win_prob_delta"])
 
     return lev_df
 
