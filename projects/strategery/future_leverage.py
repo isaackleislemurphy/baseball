@@ -1,7 +1,5 @@
 """"""
 
-import itertools
-
 import numpy as np
 import pandas as pd
 
@@ -63,7 +61,6 @@ def calculate_expected_rest_of_game_visits() -> tuple[np.ndarray, list[tuple]]:
 
     # convert those to a game-wide transition matrix
     P, states = construct_game_transition_matrix(transition_probs)
-    state_to_idx = {state: i for i, state in enumerate(states)}
     LOGGER.info("Game-level transition matrix constructed.")
 
     Q = P[:-2, :-2]
@@ -131,7 +128,8 @@ def calculate_expected_rest_of_game_leverage_visits(
     # itself (its LI lives on the diagonal of L, positionally, so just add (L >= lt)).
     expected_rog_visits = np.hstack(
         [
-            np.sum(V * V_mask * (L >= lt).astype(float), axis=1, keepdims=True) + (inclusive * (L.T >= lt).astype(float))
+            np.sum(V * V_mask * (L >= lt).astype(float), axis=1, keepdims=True)
+            + (inclusive * (L.T >= lt).astype(float))
             for lt in leverage_thresholds
         ]
     )
